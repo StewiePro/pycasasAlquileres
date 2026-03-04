@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Visualización de Productos - Gestión PYME</title>
+  </head>
+  <body>
+    <header>
+      <div class="logo">MiApp Gestión</div>
+      <div id="user-info">
+        Rol: <span id="current-role">-</span>
+        <a href="login.html" class="btn-logout" onclick="cerrarSesion()"
+          >Cerrar sesión</a
+        >
+      </div>
+    </header>
+
+    <div class="container">
+      <nav class="sidebar" id="sidebar"></nav>
+
+      <main>
+        <div class="page-header">
+          <h1>📋 Inventario de Productos</h1>
+          <p class="page-subtitle">Listado completo de productos registrados</p>
+        </div>
+
+        <!-- Resumen rápido -->
+        <div class="stats-grid" id="stats-grid"></div>
+
+        <!-- Filtros -->
+        <div class="card">
+          <div class="filtros-bar">
+            <input
+              type="text"
+              id="filtro-texto"
+              placeholder="Buscar por nombre o código..."
+              oninput="aplicarFiltros()"
+            />
+            <select
+              id="filtro-cat"
+              title="Filtrar por categoría"
+              onchange="aplicarFiltros()"
+            >
+              <option value="">Todas las categorías</option>
+              <option value="Andamios">Andamios</option>
+              <option value="Cerchas">Cerchas</option>
+              <option value="Tacos">Tacos</option>
+              <option value="Herramientas menores">Herramientas menores</option>
+              <option value="Herramientas mayores">Herramientas mayores</option>
+              <option value="Otro">Otro</option>
+            </select>
+            <select
+              id="filtro-stock"
+              title="Filtrar por nivel de stock"
+              onchange="aplicarFiltros()"
+            >
+              <option value="">Todo el stock</option>
+              <option value="bajo">Stock bajo</option>
+              <option value="normal">Stock normal</option>
+            </select>
+            <button class="btn btn-outline" onclick="limpiarFiltros()">
+              🔄 Limpiar
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabla de productos -->
+        <div class="card">
+          <div id="tabla-container"></div>
+        </div>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+      initProductosVisualizacion();
+    </script>
+  </body>
+</html>

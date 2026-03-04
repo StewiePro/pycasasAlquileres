@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Reportes - Gestión PYME</title>
+  </head>
+  <body>
+    <header>
+      <div class="logo">MiApp Gestión</div>
+      <div id="user-info">
+        Rol: <span id="current-role">-</span>
+        <a href="login.html" class="btn-logout" onclick="cerrarSesion()"
+          >Cerrar sesión</a
+        >
+      </div>
+    </header>
+
+    <div class="container">
+      <nav class="sidebar" id="sidebar"></nav>
+
+      <main>
+        <div class="page-header">
+          <h1>📊 Reportes Gerenciales</h1>
+          <p class="page-subtitle">Resumen y análisis del inventario</p>
+        </div>
+
+        <!-- KPIs principales -->
+        <div class="stats-grid" id="kpis"></div>
+
+        <!-- Reporte por categoría y stock bajo -->
+        <div class="report-grid">
+          <div class="card">
+            <h3>📦 Productos por Categoría</h3>
+            <div id="reporte-categorias"></div>
+          </div>
+          <div class="card">
+            <h3>⚠️ Productos con Stock Bajo</h3>
+            <div id="reporte-stock-bajo"></div>
+          </div>
+        </div>
+
+        <!-- Top 5 productos -->
+        <div class="card">
+          <h3>💰 Top 5 Productos por Valor en Inventario</h3>
+          <div id="reporte-top"></div>
+        </div>
+
+        <!-- Tabla completa -->
+        <div class="card">
+          <div class="card-header-actions">
+            <h3>📋 Detalle Completo del Inventario</h3>
+            <button class="btn btn-outline" onclick="imprimirReporte()">
+              🖨️ Imprimir
+            </button>
+          </div>
+          <div id="reporte-completo"></div>
+        </div>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+      initReportes();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Devolución de Alquiler - Gestión PYME</title>
+  </head>
+  <body>
+    <header>
+      <div class="logo">MiApp Gestión</div>
+      <div id="user-info">
+        Rol: <span id="current-role">-</span>
+        <a href="login.html" class="btn-logout" onclick="cerrarSesion()"
+          >Cerrar sesión</a
+        >
+      </div>
+    </header>
+
+    <div class="container">
+      <nav class="sidebar" id="sidebar"></nav>
+
+      <main>
+        <div class="page-header">
+          <h1>↩️ Devolución de Alquiler</h1>
+          <p class="page-subtitle">
+            Registra la devolución de materiales alquilados
+          </p>
+        </div>
+
+        <div id="dev-msg" class="alert hidden"></div>
+
+        <div class="card">
+          <h3>🔍 Buscar Alquiler Activo</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="buscar-alquiler"
+                >Buscar por nombre, cédula o ID de alquiler</label
+              >
+              <input
+                type="text"
+                id="buscar-alquiler"
+                placeholder="Escribe para buscar..."
+                oninput="buscarAlquilerActivo()"
+              />
+            </div>
+          </div>
+          <div id="tabla-busqueda-alquiler"></div>
+        </div>
+
+        <!-- Sección de detalle de devolución -->
+        <div id="seccion-devolucion" class="card devolucion-section">
+          <h3>📋 Detalle del Alquiler</h3>
+          <div id="detalle-alquiler"></div>
+          <div class="form-group obs-group">
+            <label for="obs-devolucion">Observaciones de devolución</label>
+            <textarea
+              id="obs-devolucion"
+              rows="2"
+              placeholder="Estado de los artículos, novedades..."
+            ></textarea>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-inline">
+              <input
+                type="checkbox"
+                id="aplicar-cobro-garantia"
+                checked
+                onchange="actualizarEstadoCobroGarantiaDevolucion()"
+              />
+              Aplicar cobro de garantía por novedades
+            </label>
+            <label for="monto-cobro-garantia"
+              >Valor a cobrar de garantía (COP)</label
+            >
+            <input
+              type="number"
+              id="monto-cobro-garantia"
+              min="0"
+              step="1000"
+              value="0"
+            />
+            <small class="text-muted"
+              >Si no hubo novedades, desmarca el checkbox para omitir el
+              cobro.</small
+            >
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="confirmarDevolucion()">
+              ✅ Confirmar Devolución
+            </button>
+            <button class="btn btn-secondary" onclick="cancelarDevolucion()">
+              ❌ Cancelar
+            </button>
+          </div>
+        </div>
+
+        <!-- Historial de devoluciones -->
+        <div class="card historial-section">
+          <h3>📋 Historial de Devoluciones</h3>
+          <div id="tabla-historial-devoluciones"></div>
+        </div>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+      initAlquilerDevolucion();
+    </script>
+  </body>
+</html>

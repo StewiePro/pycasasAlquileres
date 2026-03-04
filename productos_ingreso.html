@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Ingreso de Artículos - Gestión PYME</title>
+  </head>
+  <body>
+    <header>
+      <div class="logo">MiApp Gestión</div>
+      <div id="user-info">
+        Rol: <span id="current-role">-</span>
+        <a href="login.html" class="btn-logout" onclick="cerrarSesion()"
+          >Cerrar sesión</a
+        >
+      </div>
+    </header>
+
+    <div class="container">
+      <nav class="sidebar" id="sidebar"></nav>
+
+      <main>
+        <div class="page-header">
+          <h1>➕ Ingreso de Artículo para Alquiler</h1>
+          <p class="page-subtitle">
+            Registra un nuevo artículo en el inventario de alquiler
+          </p>
+        </div>
+
+        <div id="form-msg" class="alert hidden"></div>
+
+        <div class="card">
+          <form id="form-producto" onsubmit="guardarProducto(event)">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="codigo">Código del Producto *</label>
+                <input
+                  type="text"
+                  id="codigo"
+                  placeholder="Ej: PROD-001"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label for="nombre">Nombre del Artículo *</label>
+                <input
+                  type="text"
+                  id="nombre"
+                  placeholder="Ej: Andamio tubular 1m"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label for="categoria">Categoría *</label>
+                <select id="categoria" required>
+                  <option value="">-- Selecciona --</option>
+                  <option value="Andamios">Andamios</option>
+                  <option value="Cerchas">Cerchas</option>
+                  <option value="Tacos">Tacos</option>
+                  <option value="Herramientas menores">
+                    Herramientas menores
+                  </option>
+                  <option value="Herramientas mayores">
+                    Herramientas mayores
+                  </option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="precio">Precio alquiler (COP) *</label>
+                <input
+                  type="number"
+                  id="precio"
+                  min="0"
+                  step="100"
+                  placeholder="Ej: 150000"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label for="costo"
+                  >Valor de Mercancía / Costo de Compra (COP)</label
+                >
+                <input
+                  type="number"
+                  id="costo"
+                  min="0"
+                  step="100"
+                  placeholder="Ej: 80000"
+                />
+              </div>
+              <div class="form-group">
+                <label for="stock">Cantidad Disponible para Alquiler *</label>
+                <input
+                  type="number"
+                  id="stock"
+                  min="0"
+                  placeholder="Ej: 20"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label for="stock-min">Stock Mínimo</label>
+                <input
+                  type="number"
+                  id="stock-min"
+                  min="0"
+                  placeholder="Ej: 5"
+                />
+              </div>
+              <div class="form-group">
+                <label for="proveedor">Proveedor</label>
+                <input
+                  type="text"
+                  id="proveedor"
+                  placeholder="Ej: Distribuidora XYZ"
+                />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="descripcion">Descripción</label>
+              <textarea
+                id="descripcion"
+                rows="3"
+                placeholder="Descripción detallada del producto..."
+              ></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">
+                💾 Guardar Artículo
+              </button>
+              <button type="reset" class="btn btn-secondary">🔄 Limpiar</button>
+              <a href="productos_visualizacion.html" class="btn btn-outline"
+                >📋 Ver Inventario</a
+              >
+            </div>
+          </form>
+        </div>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+      initProductosIngreso();
+    </script>
+  </body>
+</html>

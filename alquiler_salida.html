@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Salida por Alquiler - Gestión PYME</title>
+  </head>
+  <body>
+    <header>
+      <div class="logo">MiApp Gestión</div>
+      <div id="user-info">
+        Rol: <span id="current-role">-</span>
+        <a href="login.html" class="btn-logout" onclick="cerrarSesion()"
+          >Cerrar sesión</a
+        >
+      </div>
+    </header>
+
+    <div class="container">
+      <nav class="sidebar" id="sidebar"></nav>
+
+      <main>
+        <div class="page-header">
+          <h1>📤 Salida por Alquiler</h1>
+          <p class="page-subtitle">
+            Registra la salida de materiales en alquiler
+          </p>
+        </div>
+
+        <div id="form-msg" class="alert hidden"></div>
+
+        <div class="card">
+          <h3>👤 Datos del Cliente</h3>
+          <form id="form-alquiler" onsubmit="guardarAlquiler(event)">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="cliente-nombre">Nombre del Cliente *</label>
+                <input
+                  type="text"
+                  id="cliente-nombre"
+                  placeholder="Ej: Juan Pérez"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label for="cliente-id">Cédula / NIT *</label>
+                <input
+                  type="text"
+                  id="cliente-id"
+                  placeholder="Ej: 1234567890"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label for="cliente-tel">Teléfono</label>
+                <input
+                  type="text"
+                  id="cliente-tel"
+                  placeholder="Ej: 3001234567"
+                />
+              </div>
+              <div class="form-group">
+                <label for="cliente-dir">Dirección / Obra</label>
+                <input
+                  type="text"
+                  id="cliente-dir"
+                  placeholder="Ej: Calle 12 # 34-56"
+                />
+              </div>
+              <div class="form-group">
+                <label for="fecha-devolucion">Fecha de Devolución *</label>
+                <input
+                  type="date"
+                  id="fecha-devolucion"
+                  required
+                  oninput="calcularTotalAlquiler()"
+                />
+                <small class="text-muted"
+                  >Los días se calculan desde hoy hasta la fecha de
+                  devolución.</small
+                >
+              </div>
+              <div class="form-group">
+                <label>Días de Alquiler</label>
+                <div id="dias-calculados" class="dias-calculados-display">
+                  — Selecciona una fecha
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="garantia">Depósito de Garantía (COP)</label>
+                <input
+                  type="number"
+                  id="garantia"
+                  min="0"
+                  step="1000"
+                  placeholder="Ej: 200000"
+                  value="0"
+                  oninput="calcularTotalAlquiler()"
+                />
+                <small class="text-muted"
+                  >Se descuenta del total si no hay novedad en la
+                  devolución.</small
+                >
+              </div>
+            </div>
+
+            <hr class="section-divider" />
+
+            <h3>📦 Artículos a Alquilar</h3>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="buscar-articulo"
+                  >Buscar Artículo (código o nombre)</label
+                >
+                <input
+                  type="text"
+                  id="buscar-articulo"
+                  placeholder="Escribe para buscar..."
+                  oninput="buscarArticuloAlquiler()"
+                />
+              </div>
+            </div>
+            <div id="resultado-busqueda-alquiler"></div>
+
+            <div class="tabla-container">
+              <table class="tabla" id="tabla-items-alquiler">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Nombre</th>
+                    <th>Disponibles</th>
+                    <th>Cantidad</th>
+                    <th>Precio/día (COP)</th>
+                    <th>Subtotal</th>
+                    <th>Quitar</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-items-alquiler">
+                  <tr id="fila-vacia">
+                    <td colspan="7" class="text-muted text-center">
+                      No hay artículos agregados.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Resumen de costos -->
+            <div id="resumen-costos-box" class="resumen-costos-box">
+              <strong class="resumen-titulo">💰 Resumen de Facturación</strong>
+              <table class="resumen-tabla">
+                <tr>
+                  <td class="resumen-celda-label">Precio total por día:</td>
+                  <td class="resumen-celda-valor" id="res-subtotal">$0</td>
+                </tr>
+                <tr>
+                  <td class="resumen-celda-label">Días de Alquiler:</td>
+                  <td class="resumen-celda-valor" id="res-dias">0</td>
+                </tr>
+                <tr>
+                  <td class="resumen-celda-label resumen-bold">
+                    Valor Alquiler:
+                  </td>
+                  <td
+                    class="resumen-celda-valor resumen-bold"
+                    id="res-total-alquiler"
+                  >
+                    $0
+                  </td>
+                </tr>
+                <tr id="res-garantia-row">
+                  <td class="resumen-celda-label">Depósito de Garantía:</td>
+                  <td class="resumen-celda-valor" id="res-garantia">$0</td>
+                </tr>
+                <tr class="resumen-total">
+                  <td class="resumen-total-label">TOTAL A PAGAR AL INICIO:</td>
+                  <td class="resumen-total-valor" id="res-total-pagar">$0</td>
+                </tr>
+              </table>
+            </div>
+
+            <div class="form-group form-group-observaciones">
+              <label for="observaciones">Observaciones</label>
+              <textarea
+                id="observaciones"
+                rows="2"
+                placeholder="Notas adicionales del alquiler..."
+              ></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">
+                💾 Registrar Alquiler
+              </button>
+              <button
+                type="reset"
+                class="btn btn-secondary"
+                onclick="limpiarFormAlquiler()"
+              >
+                🔄 Limpiar
+              </button>
+              <a href="alquiler_devolucion.html" class="btn btn-outline"
+                >↩️ Devoluciones</a
+              >
+            </div>
+          </form>
+        </div>
+
+        <!-- Alquileres activos recientes -->
+        <div class="card">
+          <h3>📋 Alquileres Activos Recientes</h3>
+          <div id="tabla-alquileres-activos"></div>
+        </div>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+      initAlquilerSalida();
+    </script>
+  </body>
+</html>

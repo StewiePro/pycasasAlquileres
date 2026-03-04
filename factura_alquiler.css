@@ -1,0 +1,202 @@
+/* =============================================
+   FACTURA_ALQUILER.CSS
+   Estilos para la página de factura de alquiler
+   ============================================= */
+
+/* Ocultar elementos de navegación al imprimir */
+@media print {
+  header,
+  .sidebar,
+  .no-print {
+    display: none !important;
+  }
+  .container {
+    display: block !important;
+  }
+  main {
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    background: white;
+  }
+  .factura-box {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+}
+
+/* Caja principal de la factura */
+.factura-box {
+  max-width: 800px;
+  margin: 2rem auto;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  padding: 2rem;
+  font-family: Arial, sans-serif;
+}
+
+/* Encabezado de la factura */
+.factura-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 3px solid #0066cc;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.factura-empresa h2 {
+  color: #0066cc;
+  margin: 0 0 0.3rem 0;
+  font-size: 1.4rem;
+}
+
+.factura-empresa p {
+  margin: 0.15rem 0;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+/* Número y fechas */
+.factura-numero {
+  text-align: right;
+}
+
+.factura-numero .num {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #0066cc;
+}
+
+.factura-numero p {
+  margin: 0.2rem 0;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.factura-badge {
+  background: #0066cc;
+  color: white;
+  padding: 0.2rem 0.7rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  display: inline-block;
+  margin-top: 0.3rem;
+}
+
+/* Secciones internas */
+.factura-section {
+  margin-bottom: 1.5rem;
+}
+
+.factura-section h4 {
+  background: #f0f4fa;
+  padding: 0.4rem 0.8rem;
+  border-left: 4px solid #0066cc;
+  margin: 0 0 0.8rem 0;
+  font-size: 0.95rem;
+}
+
+/* Grid de datos del cliente */
+.factura-datos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 2rem;
+  font-size: 0.9rem;
+}
+
+.factura-datos .dato {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.factura-datos .dato strong {
+  min-width: 120px;
+  color: #333;
+}
+
+.factura-datos .dato span {
+  color: #555;
+}
+
+/* Tabla de materiales */
+.factura-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.factura-tabla thead tr {
+  background: #0066cc;
+  color: white;
+}
+
+.factura-tabla th,
+.factura-tabla td {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid #e0e0e0;
+}
+
+.factura-tabla tbody tr:nth-child(even) {
+  background: #f8f9fa;
+}
+
+.factura-tabla tfoot tr {
+  font-weight: bold;
+  background: #f0f4fa;
+}
+
+/* Bloque de totales */
+.factura-totales {
+  max-width: 320px;
+  margin-left: auto;
+  margin-top: 1rem;
+}
+
+.factura-totales table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.factura-totales td {
+  padding: 0.4rem 0.6rem;
+}
+
+.factura-totales .total-final {
+  background: #0066cc;
+  color: white;
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+.factura-totales .total-final td {
+  padding: 0.6rem;
+}
+
+/* Pie de factura */
+.factura-footer {
+  margin-top: 2rem;
+  border-top: 1px solid #ddd;
+  padding-top: 1rem;
+  font-size: 0.8rem;
+  color: #777;
+  text-align: center;
+}
+
+/* Firmas */
+.firma-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.firma-box {
+  text-align: center;
+  border-top: 1px solid #333;
+  padding-top: 0.5rem;
+  font-size: 0.85rem;
+}

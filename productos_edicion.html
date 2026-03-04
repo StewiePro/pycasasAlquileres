@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Edición de Productos - Gestión PYME</title>
+  </head>
+  <body>
+    <header>
+      <div class="logo">MiApp Gestión</div>
+      <div id="user-info">
+        Rol: <span id="current-role">-</span>
+        <a href="login.html" class="btn-logout" onclick="cerrarSesion()"
+          >Cerrar sesión</a
+        >
+      </div>
+    </header>
+
+    <div class="container">
+      <nav class="sidebar" id="sidebar"></nav>
+
+      <main>
+        <div class="page-header">
+          <h1>✏️ Edición de Productos</h1>
+          <p class="page-subtitle">
+            Busca y modifica los datos de un producto existente
+          </p>
+        </div>
+
+        <div id="edit-msg" class="alert hidden"></div>
+
+        <!-- Buscador -->
+        <div class="card" id="seccion-busqueda">
+          <h3>🔍 Buscar Producto</h3>
+          <div class="search-bar">
+            <input
+              type="text"
+              id="buscar-input"
+              placeholder="Busca por código o nombre..."
+              oninput="buscarProductoEdicion()"
+            />
+          </div>
+          <div id="tabla-busqueda"></div>
+        </div>
+
+        <!-- Formulario de edición -->
+        <div class="card hidden" id="seccion-edicion">
+          <h3>📝 Modificar Datos</h3>
+          <form id="form-edicion" onsubmit="actualizarProducto(event)">
+            <input type="hidden" id="edit-id" />
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="edit-codigo">Código</label>
+                <input
+                  type="text"
+                  id="edit-codigo"
+                  readonly
+                  class="input-readonly"
+                />
+              </div>
+              <div class="form-group">
+                <label for="edit-nombre">Nombre *</label>
+                <input type="text" id="edit-nombre" required />
+              </div>
+              <div class="form-group">
+                <label for="edit-categoria">Categoría *</label>
+                <select id="edit-categoria" required>
+                  <option value="Andamios">Andamios</option>
+                  <option value="Cerchas">Cerchas</option>
+                  <option value="Tacos">Tacos</option>
+                  <option value="Herramientas menores">Herramientas menores</option>
+                  <option value="Herramientas mayores">Herramientas mayores</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="edit-precio">Precio alquiler (COP) *</label>
+                <input
+                  type="number"
+                  id="edit-precio"
+                  min="0"
+                  step="100"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label for="edit-costo">Costo de Compra (COP)</label>
+                <input type="number" id="edit-costo" min="0" step="100" />
+              </div>
+              <div class="form-group">
+                <label for="edit-stock">Stock *</label>
+                <input type="number" id="edit-stock" min="0" required />
+              </div>
+              <div class="form-group">
+                <label for="edit-stock-min">Stock Mínimo</label>
+                <input type="number" id="edit-stock-min" min="0" />
+              </div>
+              <div class="form-group">
+                <label for="edit-proveedor">Proveedor</label>
+                <input type="text" id="edit-proveedor" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="edit-descripcion">Descripción</label>
+              <textarea id="edit-descripcion" rows="3"></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">
+                💾 Guardar Cambios
+              </button>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                onclick="cancelarEdicion()"
+              >
+                ❌ Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+      initProductosEdicion();
+    </script>
+  </body>
+</html>

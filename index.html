@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Panel Principal - Gestión PYME</title>
+  </head>
+  <body>
+    <header>
+      <div class="logo">MiApp Gestión</div>
+      <div id="user-info">
+        Bienvenido: <strong id="current-user">-</strong> &nbsp;|&nbsp; Rol:
+        <span id="current-role">-</span>
+        <a href="login.html" class="btn-logout" onclick="cerrarSesion()"
+          >Cerrar sesión</a
+        >
+      </div>
+    </header>
+
+    <div class="container">
+      <nav class="sidebar" id="sidebar"></nav>
+
+      <main id="content">
+        <div class="page-header">
+          <h1>🏠 Panel de Control</h1>
+          <p class="page-subtitle" id="bienvenida-texto">Cargando...</p>
+        </div>
+
+        <div class="stats-grid" id="stats-inicio"></div>
+
+        <div class="report-grid">
+          <div class="card">
+            <h3>🚀 Accesos Rápidos</h3>
+            <div
+              id="accesos-rapidos"
+              class="accesos-container"
+            ></div>
+          </div>
+          <div class="card">
+            <h3>ℹ️ Información del Sistema</h3>
+            <table class="tabla">
+              <tbody>
+                <tr>
+                  <td><strong>Versión</strong></td>
+                  <td>1.0.0</td>
+                </tr>
+                <tr>
+                  <td><strong>Usuario</strong></td>
+                  <td id="info-user">-</td>
+                </tr>
+                <tr>
+                  <td><strong>Rol</strong></td>
+                  <td id="info-role">-</td>
+                </tr>
+                <tr>
+                  <td><strong>Permisos</strong></td>
+                  <td id="info-permisos">-</td>
+                </tr>
+                <tr>
+                  <td><strong>Fecha</strong></td>
+                  <td id="info-fecha">-</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+      initIndex();
+    </script>
+  </body>
+</html>

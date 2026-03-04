@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Registro de Usuario - Gestión PYME</title>
+  </head>
+  <body class="auth-page">
+    <div class="auth-container">
+      <div class="auth-card">
+        <div class="auth-logo">MiApp Gestión</div>
+        <h2 class="auth-title">Registrar Usuario</h2>
+
+        <div id="registro-msg" class="alert hidden"></div>
+
+        <form id="registro-form" onsubmit="handleRegistro(event)">
+          <div class="form-group">
+            <label for="nombre">Nombre completo</label>
+            <input
+              type="text"
+              id="nombre"
+              placeholder="Ej: Juan Pérez"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="email">Correo electrónico</label>
+            <input
+              type="email"
+              id="email"
+              placeholder="Ej: juan@empresa.com"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="username">Nombre de usuario</label>
+            <input
+              type="text"
+              id="username"
+              placeholder="Ej: juanperez"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="password">Contraseña</label>
+            <input
+              type="password"
+              id="password"
+              placeholder="Mínimo 6 caracteres"
+              minlength="6"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="password2">Confirmar contraseña</label>
+            <input
+              type="password"
+              id="password2"
+              placeholder="Repite la contraseña"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="role">Rol asignado</label>
+            <select id="role" required>
+              <option value="">-- Selecciona un rol --</option>
+              <option value="vendedor">Vendedor</option>
+              <option value="bodeguero">Bodeguero</option>
+              <option value="gerente">Gerente</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-full">
+            Registrar Usuario
+          </button>
+        </form>
+
+        <div class="auth-footer">
+          <p>¿Ya tienes cuenta? <a href="login.html">Inicia sesión</a></p>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

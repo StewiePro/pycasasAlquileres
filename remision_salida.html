@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="factura_alquiler.css" />
+    <title>Remisión de Salida - Gestión PYME</title>
+  </head>
+  <body>
+    <header>
+      <div class="logo">MiApp Gestión</div>
+      <div id="user-info">
+        Rol: <span id="current-role">-</span>
+        <a href="login.html" class="btn-logout" onclick="cerrarSesion()"
+          >Cerrar sesión</a
+        >
+      </div>
+    </header>
+
+    <div class="container">
+      <nav class="sidebar" id="sidebar"></nav>
+      <main>
+        <div class="no-print button-group remision-actions">
+          <button class="btn btn-primary" onclick="window.print()">
+            🖨️ Imprimir Remisión
+          </button>
+          <a href="alquiler_salida.html" class="btn btn-outline"
+            >← Volver a Salidas</a
+          >
+        </div>
+
+        <div id="remision-error" class="alert alert-error factura-error-hidden">
+          No se encontró la remisión solicitada.
+        </div>
+
+        <div class="factura-box remision-hidden" id="remision-box">
+          <div class="factura-header">
+            <div class="factura-empresa">
+              <h2>📄 Remisión de Entrega</h2>
+              <p>Pycasas Alquileres</p>
+              <p>NIT: 900.502.960-5</p>
+              <p>Tel: 300 380 38 99</p>
+            </div>
+            <div class="factura-numero">
+              <div class="num" id="rem-numero">REM-0000</div>
+              <p>Fecha de Emisión: <strong id="rem-fecha-emision">-</strong></p>
+              <p>Fecha/Hora Salida: <strong id="rem-fecha-salida">-</strong></p>
+            </div>
+          </div>
+
+          <div class="factura-section">
+            <h4>👤 Datos del Cliente</h4>
+            <div class="factura-datos">
+              <div class="dato">
+                <strong>Nombre:</strong><span id="rem-cliente-nombre">-</span>
+              </div>
+              <div class="dato">
+                <strong>Cédula / NIT:</strong><span id="rem-cliente-id">-</span>
+              </div>
+              <div class="dato">
+                <strong>Teléfono:</strong><span id="rem-cliente-tel">-</span>
+              </div>
+              <div class="dato">
+                <strong>Dirección / Obra:</strong
+                ><span id="rem-cliente-dir">-</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="factura-section">
+            <h4>📦 Herramientas Entregadas</h4>
+            <table class="factura-tabla">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Código</th>
+                  <th>Descripción</th>
+                  <th class="text-center">Cant.</th>
+                  <th class="text-right">Precio/día</th>
+                  <th class="text-right">Subtotal día</th>
+                </tr>
+              </thead>
+              <tbody id="rem-items"></tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="5" class="text-right">Subtotal por día:</td>
+                  <td class="text-right" id="rem-subtotal-dia">$0</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div class="factura-totales">
+            <table>
+              <tr>
+                <td>Depósito de Garantía recibido:</td>
+                <td class="text-right" id="rem-garantia">$0</td>
+              </tr>
+              <tr class="total-final">
+                <td>Total recibido en salida:</td>
+                <td class="text-right" id="rem-total-salida">$0</td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="factura-section factura-obs-section" id="rem-obs-section">
+            <h4>📝 Observaciones</h4>
+            <p id="rem-observaciones" class="observaciones-text">-</p>
+          </div>
+
+          <div class="firma-grid">
+            <div class="firma-box">
+              <p>ENTREGADO POR</p>
+              <p id="rem-registrado-por" class="firma-usuario">-</p>
+            </div>
+            <div class="firma-box">
+              <p>RECIBIDO POR (Cliente)</p>
+              <p class="firma-usuario">
+                C.C./NIT: <span id="rem-firma-id">-</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="factura-footer">
+            <p>Documento soporte de salida de herramientas en alquiler.</p>
+            <p>El valor de alquiler se liquida al momento de la devolución.</p>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+      initRemisionSalida();
+    </script>
+  </body>
+</html>

@@ -69,23 +69,14 @@
                 />
               </div>
               <div class="form-group">
-                <label for="fecha-devolucion">Fecha de Devolución *</label>
-                <input
-                  type="date"
-                  id="fecha-devolucion"
-                  required
-                  oninput="calcularTotalAlquiler()"
-                />
+                <label>Fecha y Hora de Salida</label>
+                <div id="fecha-salida-reloj" class="dias-calculados-display">
+                  — Se asigna con el reloj interno al registrar
+                </div>
                 <small class="text-muted"
-                  >Los días se calculan desde hoy hasta la fecha de
+                  >La liquidación de días se calcula al confirmar la
                   devolución.</small
                 >
-              </div>
-              <div class="form-group">
-                <label>Días de Alquiler</label>
-                <div id="dias-calculados" class="dias-calculados-display">
-                  — Selecciona una fecha
-                </div>
               </div>
               <div class="form-group">
                 <label for="garantia">Depósito de Garantía (COP)</label>
@@ -157,7 +148,9 @@
                 </tr>
                 <tr>
                   <td class="resumen-celda-label">Días de Alquiler:</td>
-                  <td class="resumen-celda-valor" id="res-dias">0</td>
+                  <td class="resumen-celda-valor" id="res-dias">
+                    Se liquida en devolución
+                  </td>
                 </tr>
                 <tr>
                   <td class="resumen-celda-label resumen-bold">
@@ -167,7 +160,7 @@
                     class="resumen-celda-valor resumen-bold"
                     id="res-total-alquiler"
                   >
-                    $0
+                    Pendiente
                   </td>
                 </tr>
                 <tr id="res-garantia-row">
@@ -210,7 +203,7 @@
 
         <!-- Alquileres activos recientes -->
         <div class="card">
-          <h3>📋 Alquileres Activos Recientes</h3>
+          <h3>📋 Alquileres Activos</h3>
           <div id="tabla-alquileres-activos"></div>
         </div>
       </main>

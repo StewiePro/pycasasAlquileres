@@ -32,10 +32,7 @@
         <div class="report-grid">
           <div class="card">
             <h3>🚀 Accesos Rápidos</h3>
-            <div
-              id="accesos-rapidos"
-              class="accesos-container"
-            ></div>
+            <div id="accesos-rapidos" class="accesos-container"></div>
           </div>
           <div class="card">
             <h3>ℹ️ Información del Sistema</h3>
@@ -60,8 +57,41 @@
                 <tr>
                   <td><strong>Fecha</strong></td>
                   <td id="info-fecha">-</td>
-                  <button onclick="exportarDatos()">Sincronizar con Mongo</button>
-                  <button onclick="cargarDatosDesdeMongo()">Cargar desde Mongo</button>
+                </tr>
+                <tr>
+                  <td><strong>Mongo</strong></td>
+                  <td>
+                    <span id="mongo-estado" class="badge badge-warning"
+                      >Verificando...</span
+                    >
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Ultima sincronizacion</strong></td>
+                  <td id="mongo-ultima-sync">--</td>
+                </tr>
+                <tr>
+                  <td><strong>Acciones</strong></td>
+                  <td>
+                    <button
+                      class="btn btn-sm btn-primary"
+                      onclick="exportarDatos()"
+                    >
+                      Sincronizar con Mongo
+                    </button>
+                    <button
+                      class="btn btn-sm btn-outline"
+                      onclick="cargarDatosDesdeMongo()"
+                    >
+                      Cargar desde Mongo
+                    </button>
+                    <button
+                      class="btn btn-sm btn-secondary"
+                      onclick="verificarConexionMongo()"
+                    >
+                      Probar conexion
+                    </button>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -69,7 +99,6 @@
         </div>
       </main>
     </div>
-
 
     <script src="script.js"></script>
     <script>

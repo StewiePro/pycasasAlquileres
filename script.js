@@ -182,6 +182,14 @@ function initIndex() {
   const sesion = verificarSesion();
   if (!sesion) return;
 
+  // Sincroniza estado local al abrir el panel principal.
+  cargarUltimaSincronizacionGuardada();
+  cargarDatosDesdeMongo();
+  verificarConexionMongo();
+
+  // Refresca el texto relativo ("hace X min") sin recargar la página.
+  setInterval(cargarUltimaSincronizacionGuardada, 60000);
+
   // Encabezado
   const spanUser = document.getElementById("current-user");
   if (spanUser) spanUser.textContent = sesion.username;
@@ -350,6 +358,7 @@ function guardarProducto(event) {
   );
   document.getElementById("form-producto").reset();
   window.scrollTo(0, 0);
+  exportarDatos(); // 🔄 Sincronizar con MongoDB Atlas
 }
 
 // -----------------------------------------------
@@ -460,6 +469,7 @@ function actualizarProducto(event) {
     `Producto "${productos[idx].nombre}" actualizado correctamente.`,
     "success",
   );
+  exportarDatos();
   cancelarEdicion();
   window.scrollTo(0, 0);
 }
@@ -557,6 +567,7 @@ function confirmarEliminar() {
     `Producto "${prod ? prod.nombre : ""}" eliminado correctamente.`,
     "success",
   );
+  exportarDatos();
   cerrarModal();
   document.getElementById("buscar-input").value = "";
   document.getElementById("tabla-busqueda").innerHTML = "";
@@ -868,6 +879,56 @@ function imprimirReporte() {
 /** Artículos temporales del formulario de salida */
 let _itemsAlquiler = [];
 
+const CLAVE_CONSECUTIVO_DOC = "consecutivoDocumental";
+
+function formatearNumeroRemision(consecutivo) {
+  return `REM${String(consecutivo).padStart(5, "0")}`;
+}
+
+function formatearNumeroFactura(consecutivo) {
+  return `FVPA${String(consecutivo).padStart(5, "0")}`;
+}
+
+function resolverConsecutivoDesdeAlquiler(alquiler) {
+  if (
+    Number.isInteger(alquiler?.consecutivoDoc) &&
+    alquiler.consecutivoDoc >= 0
+  ) {
+    return alquiler.consecutivoDoc;
+  }
+
+  if (typeof alquiler?.remisionNumero === "string") {
+    const matchRem = alquiler.remisionNumero.match(/^REM(\d{5})$/);
+    if (matchRem) return parseInt(matchRem[1], 10);
+  }
+
+  if (typeof alquiler?.facturaNumero === "string") {
+    const matchFac = alquiler.facturaNumero.match(/^FVPA(\d{5})$/);
+    if (matchFac) return parseInt(matchFac[1], 10);
+  }
+
+  return null;
+}
+
+function obtenerSiguienteConsecutivoDocumental(alquileres = []) {
+  const guardado = parseInt(
+    localStorage.getItem(CLAVE_CONSECUTIVO_DOC) || "-1",
+    10,
+  );
+  let maxDesdeDatos = -1;
+
+  alquileres.forEach((a) => {
+    const consecutivo = resolverConsecutivoDesdeAlquiler(a);
+    if (Number.isInteger(consecutivo) && consecutivo > maxDesdeDatos) {
+      maxDesdeDatos = consecutivo;
+    }
+  });
+
+  const siguiente = Math.max(guardado, maxDesdeDatos) + 1;
+  localStorage.setItem(CLAVE_CONSECUTIVO_DOC, String(siguiente));
+  return siguiente;
+}
+
 /**
  * Inicializa la página de salida por alquiler.
  */
@@ -950,8 +1011,10 @@ function agregarItemAlquiler(p) {
   if (existente) {
     // Si ya existe, pedimos una nueva cantidad
     const nuevaCantidad = parseInt(
-      prompt(`Ya tienes "${p.nombre}" agregado.\nIngresa la nueva cantidad (máx. ${p.stock}):`),
-      10
+      prompt(
+        `Ya tienes "${p.nombre}" agregado.\nIngresa la nueva cantidad (máx. ${p.stock}):`,
+      ),
+      10,
     );
 
     if (!nuevaCantidad || nuevaCantidad <= 0) {
@@ -969,7 +1032,7 @@ function agregarItemAlquiler(p) {
     // Si es un producto nuevo, pedimos la cantidad
     const cantidad = parseInt(
       prompt(`Ingrese la cantidad para "${p.nombre}" (máx. ${p.stock}):`),
-      10
+      10,
     );
 
     if (!cantidad || cantidad <= 0) {
@@ -1043,7 +1106,7 @@ function calcularTotalAlquiler() {
   // Calculamos el subtotal de todos los ítems
   const subtotalDia = _itemsAlquiler.reduce(
     (s, i) => s + i.precioAlquiler * i.cantidad,
-    0
+    0,
   );
 
   // Restamos la garantía al subtotal
@@ -1071,7 +1134,6 @@ function calcularTotalAlquiler() {
     box.style.display = "none";
   }
 }
-
 
 /**
  * Cambia la cantidad de un ítem en la lista temporal.
@@ -1127,6 +1189,10 @@ function guardarAlquiler(event) {
     0,
   );
   const fechaSalidaActual = new Date();
+  const alquileres = JSON.parse(localStorage.getItem("alquileres") || "[]");
+  const consecutivoDoc = obtenerSiguienteConsecutivoDocumental(alquileres);
+  const remisionNumero = formatearNumeroRemision(consecutivoDoc);
+  const facturaNumero = formatearNumeroFactura(consecutivoDoc);
 
   // Verificar stock disponible antes de guardar
   const productos = JSON.parse(localStorage.getItem("productos") || "[]");
@@ -1145,6 +1211,9 @@ function guardarAlquiler(event) {
   // Crear registro de alquiler
   const alquiler = {
     id: Date.now(),
+    consecutivoDoc,
+    remisionNumero,
+    facturaNumero,
     cliente,
     items: _itemsAlquiler.map((i) => ({ ...i })),
     dias: 0,
@@ -1169,15 +1238,15 @@ function guardarAlquiler(event) {
   });
   localStorage.setItem("productos", JSON.stringify(productos));
 
-  const alquileres = JSON.parse(localStorage.getItem("alquileres") || "[]");
   alquileres.push(alquiler);
   localStorage.setItem("alquileres", JSON.stringify(alquileres));
 
   mostrarAlerta(
     msgDiv,
-    `Alquiler #${alquiler.id} registrado exitosamente para ${cliente.nombre}.`,
+    `Alquiler registrado para ${cliente.nombre}. Remisión ${remisionNumero} y factura ${facturaNumero}.`,
     "success",
   );
+  exportarDatos();
   _itemsAlquiler = [];
   document.getElementById("form-alquiler").reset();
   renderizarItemsAlquiler();
@@ -1441,7 +1510,8 @@ function confirmarDevolucion() {
   const garantiaOriginal = alquileres[idx].garantia || 0;
   const garantiaRetenida = aplicarCobroGarantia ? montoCobroGarantia : 0;
 
-  alquileres[idx].totalPagar = totalAlquilerBase - (garantiaOriginal - garantiaRetenida);
+  alquileres[idx].totalPagar =
+    totalAlquilerBase - (garantiaOriginal - garantiaRetenida);
   alquileres[idx].estado = "devuelto";
   alquileres[idx].dias = diasLiquidados;
   alquileres[idx].totalAlquiler = totalAlquilerBase;
@@ -1450,7 +1520,8 @@ function confirmarDevolucion() {
   alquileres[idx].observacionesDevolucion = observaciones;
   alquileres[idx].garantiaCobrada = aplicarCobroGarantia;
   alquileres[idx].garantia = montoCobroGarantia;
-  alquileres[idx].totalPagar = totalAlquilerBase - (garantiaOriginal - garantiaRetenida);
+  alquileres[idx].totalPagar =
+    totalAlquilerBase - (garantiaOriginal - garantiaRetenida);
   alquileres[idx].devueltoPor = sesion ? sesion.username : "desconocido";
   localStorage.setItem("alquileres", JSON.stringify(alquileres));
 
@@ -1468,16 +1539,13 @@ function confirmarDevolucion() {
     "success",
   );
 
+  exportarDatos();
+
   cancelarDevolucion();
   document.getElementById("buscar-alquiler").value = "";
   document.getElementById("tabla-busqueda-alquiler").innerHTML = "";
   cargarHistorialDevoluciones();
   window.scrollTo(0, 0);
-  confirmarDevolucion();
-  exportarDatos();
-  window.onload = () => {
-
-};
 }
 
 /**
@@ -1504,13 +1572,14 @@ async function cargarHistorialDevoluciones() {
     }
 
     let html = "<table class='table'>";
-    html += "<tr><th>ID</th><th>Cliente</th><th>Artículos</th><th>Salida</th><th>Dev. Real</th><th>Total</th></tr>";
+    html +=
+      "<tr><th>ID</th><th>Cliente</th><th>Artículos</th><th>Salida</th><th>Dev. Real</th><th>Total</th></tr>";
 
     devueltos.forEach((a) => {
       html += `<tr>
         <td>${a.id}</td>
         <td>${a.cliente?.nombre || ""}</td>
-        <td>${a.items.map(i => `${i.nombre} (${i.cantidad})`).join(", ")}</td>
+        <td>${a.items.map((i) => `${i.nombre} (${i.cantidad})`).join(", ")}</td>
         <td>${a.fechaSalida}</td>
         <td>${a.fechaDevolucionReal}</td>
         <td>${a.totalPagar}</td>
@@ -1519,30 +1588,6 @@ async function cargarHistorialDevoluciones() {
 
     html += "</table>";
     div.innerHTML = html;
-
-  } catch (err) {
-    console.error("❌ Error cargando historial:", err);
-    div.innerHTML = '<p class="text-danger">Error cargando historial.</p>';
-  }
-}
-    // Renderizar la tabla con los datos reales de Mongo
-    let html = "<table class='table'>";
-    html += "<tr><th>ID</th><th>Cliente</th><th>Artículos</th><th>Salida</th><th>Dev. Real</th><th>Total</th></tr>";
-
-    devueltos.forEach((a) => {
-      html += `<tr>
-        <td>${a.id}</td>
-        <td>${a.cliente?.nombre || ""}</td>
-        <td>${a.items.map(i => `${i.nombre} (${i.cantidad})`).join(", ")}</td>
-        <td>${a.fechaSalida}</td>
-        <td>${a.fechaDevolucionReal}</td>
-        <td>${a.totalPagar}</td>
-      </tr>`;
-    });
-
-    html += "</table>";
-    div.innerHTML = html;
-
   } catch (err) {
     console.error("❌ Error cargando historial:", err);
     div.innerHTML = '<p class="text-danger">Error cargando historial.</p>';
@@ -1564,7 +1609,8 @@ async function cargarProductos() {
     }
 
     let html = "<table class='table'>";
-    html += "<tr><th>ID</th><th>Código</th><th>Nombre</th><th>Stock</th><th>Precio</th></tr>";
+    html +=
+      "<tr><th>ID</th><th>Código</th><th>Nombre</th><th>Stock</th><th>Precio</th></tr>";
 
     productos.forEach((p) => {
       html += `<tr>
@@ -1578,7 +1624,6 @@ async function cargarProductos() {
 
     html += "</table>";
     div.innerHTML = html;
-
   } catch (err) {
     console.error("❌ Error cargando productos:", err);
     div.innerHTML = '<p class="text-danger">Error cargando productos.</p>';
@@ -1621,7 +1666,13 @@ function initFacturaAlquiler() {
     if (el) el.textContent = val;
   };
 
-  set("fact-numero", "ALQ-" + String(a.id).slice(-6));
+  const consecutivoFactura = resolverConsecutivoDesdeAlquiler(a);
+  const numeroFactura =
+    a.facturaNumero ||
+    (consecutivoFactura !== null
+      ? formatearNumeroFactura(consecutivoFactura)
+      : `FVPA${String(a.id).slice(-5).padStart(5, "0")}`);
+  set("fact-numero", numeroFactura);
   set(
     "fact-fecha-emision",
     new Date().toLocaleDateString("es-CO", {
@@ -1739,7 +1790,13 @@ function initRemisionSalida() {
     if (el) el.textContent = val;
   };
 
-  set("rem-numero", "REM-" + String(a.id).slice(-6));
+  const consecutivoRemision = resolverConsecutivoDesdeAlquiler(a);
+  const numeroRemision =
+    a.remisionNumero ||
+    (consecutivoRemision !== null
+      ? formatearNumeroRemision(consecutivoRemision)
+      : `REM${String(a.id).slice(-5).padStart(5, "0")}`);
+  set("rem-numero", numeroRemision);
   set(
     "rem-fecha-emision",
     new Date().toLocaleDateString("es-CO", {
@@ -1883,155 +1940,138 @@ function generarSidebar(sesion, paginaActual) {
   sidebar.appendChild(ul);
 }
 
-///conexion base de datos mongodb atlas
+// -----------------------------------------------
+// SINCRONIZACIÓN CON MONGODB ATLAS
+// -----------------------------------------------
 
-function exportarDatos() {
-  const alquileres = JSON.parse(localStorage.getItem("alquileres") || "[]");
-  const productos = JSON.parse(localStorage.getItem("productos") || "[]");
+function mostrarEstadoMongo(mensaje, tipo = "info") {
+  const el = document.getElementById("mongo-estado");
+  if (!el) return;
 
-  fetch("http://localhost:3000/api/exportar", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ alquileres, productos }),
-  })
-    .then((res) => res.json())
-    .then((data) => console.log("Exportación exitosa:", data))
-    .catch((err) => console.error("Error exportando:", err));
+  const clase =
+    tipo === "ok"
+      ? "badge-success"
+      : tipo === "error"
+        ? "badge-danger"
+        : "badge-warning";
+
+  el.className = `badge ${clase}`;
+  el.textContent = mensaje;
 }
 
-///pruebas de base de datos
-async function pruebaInsert() {
+function formatearTiempoRelativo(fecha) {
+  const ahora = Date.now();
+  const diffMs = Math.max(0, ahora - fecha.getTime());
+  const segundos = Math.floor(diffMs / 1000);
+  const minutos = Math.floor(segundos / 60);
+  const horas = Math.floor(minutos / 60);
+  const dias = Math.floor(horas / 24);
+
+  if (segundos < 60) return "hace unos segundos";
+  if (minutos < 60) return `hace ${minutos} min`;
+  if (horas < 24) return `hace ${horas} h`;
+  return `hace ${dias} d`;
+}
+
+function actualizarUltimaSincronizacion(fecha = new Date()) {
+  const el = document.getElementById("mongo-ultima-sync");
+  const fechaValida = fecha instanceof Date ? fecha : new Date(fecha);
+  if (Number.isNaN(fechaValida.getTime())) return;
+
+  const textoBase = fechaValida.toLocaleString("es-CO", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+  const texto = `${textoBase} (${formatearTiempoRelativo(fechaValida)})`;
+
+  if (el) el.textContent = texto;
+  localStorage.setItem("mongoUltimaSync", fechaValida.toISOString());
+}
+
+function cargarUltimaSincronizacionGuardada() {
+  const guardada = localStorage.getItem("mongoUltimaSync");
+  if (!guardada) return;
+  actualizarUltimaSincronizacion(new Date(guardada));
+}
+
+async function verificarConexionMongo() {
   try {
-    await client.connect();
-
-    const db = client.db("pycasas"); // nombre de tu base
-    const alquileres = db.collection("alquileres");
-
-    // Documento de prueba
-    const nuevoAlquiler = {
-      id: 1,
-      cliente: {
-        nombre: "Juan Pérez",
-        identificacion: "123456789",
-        telefono: "3001234567",
-        direccion: "Medellín"
-      },
-      items: [
-        {
-          productoId: 1,
-          codigo: "ADM001",
-          nombre: "ANDAMIO MULTIDIRECCIONAL",
-          cantidad: 5,
-          precioAlquiler: 4000
-        }
-      ],
-      subtotalDia: 20000,
-      garantia: 5000,
-      garantiaCobrada: true,
-      totalAlquiler: 20000,
-      totalPagar: 15000,
-      estado: "devuelto",
-      fechaSalida: new Date(),
-      fechaDevolucionReal: new Date(),
-      observaciones: "Prueba inicial"
-    };
-
-    const resultado = await alquileres.insertOne(nuevoAlquiler);
-    console.log("✅ Documento insertado con ID:", resultado.insertedId);
-
+    const res = await fetch("http://localhost:3000/api/health");
+    if (!res.ok) throw new Error("No disponible");
+    mostrarEstadoMongo("Conectado", "ok");
   } catch (err) {
-    console.error("❌ Error en pruebaInsert:", err);
-  } finally {
-    await client.close();
+    mostrarEstadoMongo("Sin conexion", "error");
   }
 }
 
-pruebaInsert();
-
-async function pruebaRead() {
-  try {
-    await client.connect();
-
-    const db = client.db("pycasas");
-    const alquileres = db.collection("alquileres");
-
-    const docs = await alquileres.find().toArray();
-    console.log("📄 Documentos en alquileres:", docs);
-
-  } catch (err) {
-    console.error("❌ Error en pruebaRead:", err);
-  } finally {
-    await client.close();
-  }
-}
-
-pruebaRead();
-
-async function pruebaInsertProducto() {
-  try {
-    await client.connect();
-
-    const db = client.db("pycasas");
-    const productos = db.collection("productos");
-
-    const nuevoProducto = {
-      id: 1,
-      codigo: "ADM001",
-      nombre: "ANDAMIO MULTIDIRECCIONAL",
-      stock: 50,
-      precio: 4000
-    };
-
-    const resultado = await productos.insertOne(nuevoProducto);
-    console.log("✅ Producto insertado con ID:", resultado.insertedId);
-
-  } catch (err) {
-    console.error("❌ Error en pruebaInsertProducto:", err);
-  } finally {
-    await client.close();
-  }
-}
-
-pruebaInsertProducto();
-
-function exportarDatos() {
+/**
+ * Exporta todos los datos de localStorage a MongoDB Atlas.
+ */
+async function exportarDatos() {
   const alquileres = JSON.parse(localStorage.getItem("alquileres") || "[]");
   const productos = JSON.parse(localStorage.getItem("productos") || "[]");
 
-  fetch("http://localhost:3000/api/exportar", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ alquileres, productos }),
-  })
-    .then((res) => res.json())
-    .then((data) => console.log("✅ Datos exportados a Mongo:", data))
-    .catch((err) => console.error("❌ Error exportando:", err));
+  try {
+    const res = await fetch("http://localhost:3000/api/exportar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ alquileres, productos }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || "No se pudo sincronizar con Mongo");
+    }
+
+    const data = await res.json();
+    console.log("✅ Datos sincronizados con Mongo:", data);
+    mostrarEstadoMongo("Sincronizado", "ok");
+    actualizarUltimaSincronizacion();
+    return data;
+  } catch (err) {
+    console.error("❌ Error sincronizando con MongoDB:", err);
+    mostrarEstadoMongo("Error de sincronizacion", "error");
+    throw err;
+  }
 }
 
-function exportarDatos() {
-  const alquileres = JSON.parse(localStorage.getItem("alquileres") || "[]");
-  const productos = JSON.parse(localStorage.getItem("productos") || "[]");
-
-  fetch("http://localhost:3000/api/exportar", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ alquileres, productos }),
-  })
-    .then((res) => res.json())
-    .then((data) => console.log("✅ Datos exportados a Mongo:", data))
-    .catch((err) => console.error("❌ Error exportando:", err));
-}
-
+/**
+ * Carga datos desde MongoDB Atlas hacia localStorage.
+ */
 async function cargarDatosDesdeMongo() {
-  const productosRes = await fetch("http://localhost:3000/api/productos");
-  const productos = await productosRes.json();
+  try {
+    const productosRes = await fetch("http://localhost:3000/api/productos");
+    if (!productosRes.ok) throw new Error("Error cargando productos");
+    const productos = await productosRes.json();
 
-  const alquileresRes = await fetch("http://localhost:3000/api/alquileres");
-  const alquileres = await alquileresRes.json();
+    const alquileresRes = await fetch("http://localhost:3000/api/alquileres");
+    if (!alquileresRes.ok) throw new Error("Error cargando alquileres");
+    const alquileres = await alquileresRes.json();
 
-  console.log("📦 Productos desde Mongo:", productos);
-  console.log("📄 Alquileres desde Mongo:", alquileres);
+    if (Array.isArray(productos)) {
+      localStorage.setItem("productos", JSON.stringify(productos));
+      console.log("📦 Productos cargados desde Mongo:", productos.length);
+    }
+    if (Array.isArray(alquileres)) {
+      localStorage.setItem("alquileres", JSON.stringify(alquileres));
+      console.log("📄 Alquileres cargados desde Mongo:", alquileres.length);
 
-  // Aquí actualizas tu UI con estos datos
+      // Si no hay historial, reiniciamos el consecutivo documental para empezar en 00000.
+      if (alquileres.length === 0) {
+        localStorage.removeItem(CLAVE_CONSECUTIVO_DOC);
+      }
+    }
+
+    mostrarEstadoMongo("Datos cargados", "ok");
+    actualizarUltimaSincronizacion();
+  } catch (err) {
+    console.error("❌ Error cargando desde MongoDB:", err);
+    mostrarEstadoMongo("Error al cargar", "error");
+    throw err;
+  }
 }
-

@@ -1,4 +1,4 @@
-﻿/* =============================================
+/* =============================================
    SCRIPT.JS - Gestión PYME
    Todas las funciones organizadas por página
    ============================================= */
@@ -17,10 +17,22 @@ const PERMISOS_POR_ROL = {
 // Usuarios de demostración (para login)
 const USUARIOS_DEMO = [
   { username: "Pycasas2012", password: "Pycasas2012", role: "admin" },
+  { username: "Pruebas", password: "123", role: "admin", isTest: true },
   { username: "vendedor1", password: "1234", role: "vendedor" },
   { username: "bodeguero1", password: "1234", role: "bodeguero" },
   { username: "gerente1", password: "1234", role: "gerente" },
 ];
+
+/**
+ * Obtiene la clave correcta para localStorage dependiendo de si está en modo pruebas.
+ */
+function obtenerClaveStorage(base) {
+  const sesion = obtenerSesion();
+  if (sesion && sesion.isTest) {
+    return base + "_test";
+  }
+  return base;
+}
 
 // -----------------------------------------------
 // SESIÓN - Funciones compartidas
@@ -46,6 +58,18 @@ function verificarSesion() {
   }
   const spanRol = document.getElementById("current-role");
   if (spanRol) spanRol.textContent = sesion.role;
+  
+  if (sesion.isTest) {
+    const header = document.querySelector("header");
+    if (header) {
+      header.style.backgroundColor = "#d35400"; // Orange for test mode
+      const logo = document.querySelector(".logo");
+      if (logo && !logo.textContent.includes("PRUEBAS")) {
+         logo.textContent = logo.textContent + " [MODO PRUEBAS]";
+      }
+    }
+  }
+  
   return sesion;
 }
 
@@ -77,40 +101,65 @@ function mostrarAccesoDenegado(mensaje) {
 
 /**
  * Maneja el envío del formulario de inicio de sesión.
- * Valida credenciales contra USUARIOS_DEMO y también contra localStorage.
+ * Valida credenciales contra USUARIOS_DEMO y luego contra el backend.
  */
-function handleLogin(event) {
+async function handleLogin(event) {
   event.preventDefault();
   const username = document.getElementById("username").value.trim();
   const password = document.getElementById("password").value;
   const role = document.getElementById("role").value;
   const errorDiv = document.getElementById("login-error");
 
-  // Combinar usuarios demo + usuarios registrados
-  const usuariosGuardados = JSON.parse(
-    localStorage.getItem("usuarios") || "[]",
-  );
-  const todosLosUsuarios = [...USUARIOS_DEMO, ...usuariosGuardados];
-
-  const usuario = todosLosUsuarios.find(
+  // Primero revisamos usuarios demo (locales)
+  const usuarioLocal = USUARIOS_DEMO.find(
     (u) =>
       u.username === username && u.password === password && u.role === role,
   );
 
-  if (usuario) {
+  if (usuarioLocal) {
     sessionStorage.setItem(
       "usuario",
       JSON.stringify({
-        username: usuario.username,
-        role: usuario.role,
-        permisos: PERMISOS_POR_ROL[usuario.role] || [],
+        username: usuarioLocal.username,
+        role: usuarioLocal.role,
+        permisos: PERMISOS_POR_ROL[usuarioLocal.role] || [],
+        isTest: usuarioLocal.isTest || false,
       }),
     );
     errorDiv.style.display = "none";
     window.location.href = "index.html";
-  } else {
-    errorDiv.textContent =
-      "Usuario, contraseña o rol incorrectos. Intenta de nuevo.";
+    return;
+  }
+
+  // Si no está en demo, consultar validación contra backend MongoDB
+  try {
+    const res = await fetch("http://localhost:3000/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password, role })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      errorDiv.textContent = data.error || "Error al iniciar sesión.";
+      errorDiv.style.display = "block";
+      return;
+    }
+
+    sessionStorage.setItem(
+      "usuario",
+      JSON.stringify({
+        username: data.usuario.username,
+        role: data.usuario.role,
+        permisos: PERMISOS_POR_ROL[data.usuario.role] || [],
+        isTest: false,
+      }),
+    );
+    errorDiv.style.display = "none";
+    window.location.href = "index.html";
+  } catch (err) {
+    console.error("Error en login remoto:", err);
+    errorDiv.textContent = "Error de conexión con el servidor.";
     errorDiv.style.display = "block";
   }
 }
@@ -129,9 +178,9 @@ function initLogin() {
 // -----------------------------------------------
 
 /**
- * Maneja el envío del formulario de registro de nuevo usuario.
+ * Maneja el envío del formulario de registro de nuevo usuario al backend.
  */
-function handleRegistro(event) {
+async function handleRegistro(event) {
   event.preventDefault();
   const msgDiv = document.getElementById("registro-msg");
   const nombre = document.getElementById("nombre").value.trim();
@@ -146,29 +195,34 @@ function handleRegistro(event) {
     return;
   }
 
-  const usuarios = JSON.parse(localStorage.getItem("usuarios") || "[]");
+  mostrarAlerta(msgDiv, "Enviando solicitud al servidor...", "success");
 
-  if (usuarios.find((u) => u.username === username)) {
+  try {
+    const res = await fetch("http://localhost:3000/api/registro", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre, email, username, password, role })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      mostrarAlerta(msgDiv, data.error || "Error al registrar.", "error");
+      return;
+    }
+
     mostrarAlerta(
       msgDiv,
-      `El nombre de usuario "${username}" ya está en uso. Elige otro.`,
-      "error",
+      `¡Registro enviado exitosamente! Se ha enviado un correo al administrador para que apruebe tu cuenta. Redirigiendo al login...`,
+      "success",
     );
-    return;
+    document.getElementById("registro-form").reset();
+    setTimeout(() => {
+      window.location.href = "login.html";
+    }, 4000);
+  } catch (err) {
+    console.error("Error al registrar:", err);
+    mostrarAlerta(msgDiv, "Error de conexión con el servidor.", "error");
   }
-
-  usuarios.push({ nombre, email, username, password, role });
-  localStorage.setItem("usuarios", JSON.stringify(usuarios));
-
-  mostrarAlerta(
-    msgDiv,
-    `Usuario "${username}" registrado exitosamente. Redirigiendo al login...`,
-    "success",
-  );
-  document.getElementById("registro-form").reset();
-  setTimeout(() => {
-    window.location.href = "login.html";
-  }, 2000);
 }
 
 // -----------------------------------------------
@@ -287,7 +341,7 @@ function initIndex() {
   // Estadísticas de inicio
   const statsDiv = document.getElementById("stats-inicio");
   if (statsDiv && sesion.permisos.includes("productos")) {
-    const productos = JSON.parse(localStorage.getItem("productos") || "[]");
+    const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
     const totalStock = productos.reduce((s, p) => s + p.stock, 0);
     const stockBajo = productos.filter(
       (p) => p.stock <= (p.stockMin || 0),
@@ -338,7 +392,7 @@ function guardarProducto(event) {
     creadoPor: sesion ? sesion.username : "desconocido",
   };
 
-  const productos = JSON.parse(localStorage.getItem("productos") || "[]");
+  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
 
   if (productos.find((p) => p.codigo === producto.codigo)) {
     mostrarAlerta(
@@ -350,7 +404,7 @@ function guardarProducto(event) {
   }
 
   productos.push(producto);
-  localStorage.setItem("productos", JSON.stringify(productos));
+  localStorage.setItem(obtenerClaveStorage("productos"), JSON.stringify(productos));
   mostrarAlerta(
     msgDiv,
     `Producto "${producto.nombre}" guardado exitosamente.`,
@@ -382,7 +436,7 @@ function initProductosEdicion() {
  */
 function buscarProductoEdicion() {
   const texto = document.getElementById("buscar-input").value.toLowerCase();
-  const productos = JSON.parse(localStorage.getItem("productos") || "[]");
+  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
   const div = document.getElementById("tabla-busqueda");
   if (!texto) {
     div.innerHTML = "";
@@ -444,7 +498,7 @@ function actualizarProducto(event) {
   event.preventDefault();
   const sesion = obtenerSesion();
   const id = parseInt(document.getElementById("edit-id").value);
-  const productos = JSON.parse(localStorage.getItem("productos") || "[]");
+  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
   const idx = productos.findIndex((p) => p.id === id);
   if (idx === -1) return;
 
@@ -462,7 +516,7 @@ function actualizarProducto(event) {
     editadoPor: sesion ? sesion.username : "desconocido",
   };
 
-  localStorage.setItem("productos", JSON.stringify(productos));
+  localStorage.setItem(obtenerClaveStorage("productos"), JSON.stringify(productos));
   const msgDiv = document.getElementById("edit-msg");
   mostrarAlerta(
     msgDiv,
@@ -506,7 +560,7 @@ function initProductosEliminacion() {
  */
 function buscarProductoEliminacion() {
   const texto = document.getElementById("buscar-input").value.toLowerCase();
-  const productos = JSON.parse(localStorage.getItem("productos") || "[]");
+  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
   const div = document.getElementById("tabla-busqueda");
   if (!texto) {
     div.innerHTML = "";
@@ -556,10 +610,10 @@ function solicitarEliminar(id, nombre) {
  * Confirma y ejecuta la eliminación del producto seleccionado.
  */
 function confirmarEliminar() {
-  let productos = JSON.parse(localStorage.getItem("productos") || "[]");
+  let productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
   const prod = productos.find((p) => p.id === _idParaEliminar);
   productos = productos.filter((p) => p.id !== _idParaEliminar);
-  localStorage.setItem("productos", JSON.stringify(productos));
+  localStorage.setItem(obtenerClaveStorage("productos"), JSON.stringify(productos));
 
   const msgDiv = document.getElementById("delete-msg");
   mostrarAlerta(
@@ -605,7 +659,7 @@ function initProductosVisualizacion() {
  * Carga las estadísticas rápidas del inventario en la página de visualización.
  */
 function cargarEstadisticasVisualizacion() {
-  const productos = JSON.parse(localStorage.getItem("productos") || "[]");
+  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
   const total = productos.length;
   const totalStock = productos.reduce((s, p) => s + p.stock, 0);
   const stockBajo = productos.filter(
@@ -632,7 +686,7 @@ function aplicarFiltros() {
   ).toLowerCase();
   const cat = document.getElementById("filtro-cat")?.value || "";
   const stockFilt = document.getElementById("filtro-stock")?.value || "";
-  const productos = JSON.parse(localStorage.getItem("productos") || "[]");
+  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
 
   const lista = productos.filter((p) => {
     const ct =
@@ -725,7 +779,7 @@ function initReportes() {
  * Genera todos los reportes del inventario.
  */
 function generarReportes() {
-  const productos = JSON.parse(localStorage.getItem("productos") || "[]");
+  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
 
   if (productos.length === 0) {
     const kpis = document.getElementById("kpis");
@@ -912,7 +966,7 @@ function resolverConsecutivoDesdeAlquiler(alquiler) {
 
 function obtenerSiguienteConsecutivoDocumental(alquileres = []) {
   const guardado = parseInt(
-    localStorage.getItem(CLAVE_CONSECUTIVO_DOC) || "-1",
+    localStorage.getItem(obtenerClaveStorage("consecutivoDocumental")) || "-1",
     10,
   );
   let maxDesdeDatos = -1;
@@ -925,7 +979,7 @@ function obtenerSiguienteConsecutivoDocumental(alquileres = []) {
   });
 
   const siguiente = Math.max(guardado, maxDesdeDatos) + 1;
-  localStorage.setItem(CLAVE_CONSECUTIVO_DOC, String(siguiente));
+  localStorage.setItem(obtenerClaveStorage("consecutivoDocumental"), String(siguiente));
   return siguiente;
 }
 
@@ -967,7 +1021,7 @@ function buscarArticuloAlquiler() {
     return;
   }
 
-  const productos = JSON.parse(localStorage.getItem("productos") || "[]");
+  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
   const encontrados = productos.filter(
     (p) =>
       (p.codigo.toLowerCase().includes(texto) ||
@@ -1189,13 +1243,13 @@ function guardarAlquiler(event) {
     0,
   );
   const fechaSalidaActual = new Date();
-  const alquileres = JSON.parse(localStorage.getItem("alquileres") || "[]");
+  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
   const consecutivoDoc = obtenerSiguienteConsecutivoDocumental(alquileres);
   const remisionNumero = formatearNumeroRemision(consecutivoDoc);
   const facturaNumero = formatearNumeroFactura(consecutivoDoc);
 
   // Verificar stock disponible antes de guardar
-  const productos = JSON.parse(localStorage.getItem("productos") || "[]");
+  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
   for (const item of _itemsAlquiler) {
     const prod = productos.find((p) => p.id === item.productoId);
     if (!prod || prod.stock < item.cantidad) {
@@ -1236,10 +1290,10 @@ function guardarAlquiler(event) {
     const idx = productos.findIndex((p) => p.id === item.productoId);
     if (idx !== -1) productos[idx].stock -= item.cantidad;
   });
-  localStorage.setItem("productos", JSON.stringify(productos));
+  localStorage.setItem(obtenerClaveStorage("productos"), JSON.stringify(productos));
 
   alquileres.push(alquiler);
-  localStorage.setItem("alquileres", JSON.stringify(alquileres));
+  localStorage.setItem(obtenerClaveStorage("alquileres"), JSON.stringify(alquileres));
 
   mostrarAlerta(
     msgDiv,
@@ -1271,7 +1325,7 @@ function limpiarFormAlquiler() {
 function cargarAlquileresActivos() {
   const div = document.getElementById("tabla-alquileres-activos");
   if (!div) return;
-  const alquileres = JSON.parse(localStorage.getItem("alquileres") || "[]");
+  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
   const activos = alquileres
     .filter((a) => a.estado === "activo")
     .slice()
@@ -1356,7 +1410,7 @@ function buscarAlquilerActivo() {
     return;
   }
 
-  const alquileres = JSON.parse(localStorage.getItem("alquileres") || "[]");
+  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
   const activos = alquileres.filter(
     (a) =>
       a.estado === "activo" &&
@@ -1396,7 +1450,7 @@ function buscarAlquilerActivo() {
  * Selecciona un alquiler para procesar su devolución.
  */
 function seleccionarAlquilerDevolucion(id) {
-  const alquileres = JSON.parse(localStorage.getItem("alquileres") || "[]");
+  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
   _alquilerSeleccionado = alquileres.find((a) => a.id === id) || null;
   if (!_alquilerSeleccionado) return;
 
@@ -1484,7 +1538,7 @@ function confirmarDevolucion() {
     return;
   }
 
-  const alquileres = JSON.parse(localStorage.getItem("alquileres") || "[]");
+  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
   const idx = alquileres.findIndex((a) => a.id === _alquilerSeleccionado.id);
   if (idx === -1) return;
 
@@ -1523,15 +1577,15 @@ function confirmarDevolucion() {
   alquileres[idx].totalPagar =
     totalAlquilerBase - (garantiaOriginal - garantiaRetenida);
   alquileres[idx].devueltoPor = sesion ? sesion.username : "desconocido";
-  localStorage.setItem("alquileres", JSON.stringify(alquileres));
+  localStorage.setItem(obtenerClaveStorage("alquileres"), JSON.stringify(alquileres));
 
   // Restaurar stock
-  const productos = JSON.parse(localStorage.getItem("productos") || "[]");
+  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
   _alquilerSeleccionado.items.forEach((item) => {
     const pi = productos.findIndex((p) => p.id === item.productoId);
     if (pi !== -1) productos[pi].stock += item.cantidad;
   });
-  localStorage.setItem("productos", JSON.stringify(productos));
+  localStorage.setItem(obtenerClaveStorage("productos"), JSON.stringify(productos));
 
   mostrarAlerta(
     msgDiv,
@@ -1556,7 +1610,7 @@ async function cargarHistorialDevoluciones() {
   if (!div) return;
 
   try {
-    const res = await fetch("http://localhost:3000/api/alquileres");
+    const res = await fetch();
     const alquileres = await res.json();
 
     const devueltos = alquileres
@@ -1599,7 +1653,7 @@ async function cargarProductos() {
   if (!div) return;
 
   try {
-    const res = await fetch("http://localhost:3000/api/productos");
+    const res = await fetch();
     const productos = await res.json();
 
     if (productos.length === 0) {
@@ -1652,7 +1706,7 @@ function initFacturaAlquiler() {
     return;
   }
 
-  const alquileres = JSON.parse(localStorage.getItem("alquileres") || "[]");
+  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
   const a = alquileres.find((x) => x.id === id);
 
   if (!a) {
@@ -1777,7 +1831,7 @@ function initRemisionSalida() {
     return;
   }
 
-  const alquileres = JSON.parse(localStorage.getItem("alquileres") || "[]");
+  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
   const a = alquileres.find((x) => x.id === id);
 
   if (!a) {
@@ -2013,14 +2067,14 @@ async function verificarConexionMongo() {
  * Exporta todos los datos de localStorage a MongoDB Atlas.
  */
 async function exportarDatos() {
-  const alquileres = JSON.parse(localStorage.getItem("alquileres") || "[]");
-  const productos = JSON.parse(localStorage.getItem("productos") || "[]");
+  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
+  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
 
   try {
     const res = await fetch("http://localhost:3000/api/exportar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ alquileres, productos }),
+      body: JSON.stringify({ alquileres, productos, test: obtenerSesion()?.isTest || false }),
     });
 
     if (!res.ok) {
@@ -2045,25 +2099,25 @@ async function exportarDatos() {
  */
 async function cargarDatosDesdeMongo() {
   try {
-    const productosRes = await fetch("http://localhost:3000/api/productos");
+    const productosRes = await fetch();
     if (!productosRes.ok) throw new Error("Error cargando productos");
     const productos = await productosRes.json();
 
-    const alquileresRes = await fetch("http://localhost:3000/api/alquileres");
+    const alquileresRes = await fetch();
     if (!alquileresRes.ok) throw new Error("Error cargando alquileres");
     const alquileres = await alquileresRes.json();
 
     if (Array.isArray(productos)) {
-      localStorage.setItem("productos", JSON.stringify(productos));
+      localStorage.setItem(obtenerClaveStorage("productos"), JSON.stringify(productos));
       console.log("📦 Productos cargados desde Mongo:", productos.length);
     }
     if (Array.isArray(alquileres)) {
-      localStorage.setItem("alquileres", JSON.stringify(alquileres));
+      localStorage.setItem(obtenerClaveStorage("alquileres"), JSON.stringify(alquileres));
       console.log("📄 Alquileres cargados desde Mongo:", alquileres.length);
 
       // Si no hay historial, reiniciamos el consecutivo documental para empezar en 00000.
       if (alquileres.length === 0) {
-        localStorage.removeItem(CLAVE_CONSECUTIVO_DOC);
+        localStorage.removeItem(obtenerClaveStorage("consecutivoDocumental"));
       }
     }
 

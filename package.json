@@ -19,11 +19,13 @@
   },
   "homepage": "https://github.com/StewiePro/pycasasAlquileres#readme",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "body-parser": "^2.2.2",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "mongodb": "^7.1.0",
-    "mongoose": "^9.2.4"
+    "mongoose": "^9.2.4",
+    "nodemailer": "^8.0.1"
   }
 }

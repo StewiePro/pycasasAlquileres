@@ -13,12 +13,16 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+// Detectar directorio base para archivos estáticos
+// En Vercel usa /var/task, en local usa __dirname
+const baseDir = process.env.VERCEL ? "/var/task" : __dirname;
+
 // Servir archivos estáticos (HTML, CSS, JS)
-app.use(express.static(__dirname));
+app.use(express.static(baseDir));
 
 // Ruta raíz
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+  res.sendFile(path.join(baseDir, "index.html"));
 });
 
 // 🔹 Configuración de nodemailer con Dreamhost SMTP

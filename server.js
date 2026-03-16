@@ -14,11 +14,17 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // Detectar directorio base para archivos estáticos
-// En Vercel usa /var/task, en local usa __dirname
-const baseDir = process.env.VERCEL ? "/var/task" : __dirname;
+// En Vercel usa process.cwd(), en local usa __dirname
+const baseDir = process.cwd();
 
 // Servir archivos estáticos (HTML, CSS, JS)
 app.use(express.static(baseDir));
+
+// Rutas para archivos HTML específicos
+app.get("/:page.html", (req, res) => {
+  const page = req.params.page;
+  res.sendFile(path.join(baseDir, `${page}.html`));
+});
 
 // Ruta raíz
 app.get("/", (req, res) => {

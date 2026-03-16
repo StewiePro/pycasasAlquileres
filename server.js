@@ -13,19 +13,13 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// Detectar si es Vercel
-const isVercel = process.env.VERCEL === "1";
+// Servir archivos estáticos (HTML, CSS, JS)
+app.use(express.static(__dirname));
 
-// En Vercel, servir archivos estáticos desde la raíz
-if (isVercel) {
-  app.use(express.static(__dirname));
-  app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "index.html"));
-  });
-} else {
-  // Servir archivos estáticos (HTML, CSS, JS) en desarrollo local
-  app.use(express.static(__dirname));
-}
+// Ruta raíz
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 
 // 🔹 Configuración de nodemailer con Dreamhost SMTP
 let transporter;
@@ -46,54 +40,53 @@ async function initMailer() {
 initMailer();
 
 // 🔹 URI de conexión: usa variable de entorno o Mongo local (Compass)
+// IMPORTANTE: En Vercel debe estar configurada la variable MONGODB_URI
 const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017";
 
 // 🔹 Cliente Mongo - gestionar conexión para Vercel
 let client;
 let clientPromise;
 
-if (isVercel) {
-  // En Vercel, crear cliente sin conectar inicialmente
-  client = new MongoClient(uri, {
-    serverApi: {
-      version: ServerApiVersion.v1,
-      strict: true,
-      deprecationErrors: true,
-    },
-  });
-  clientPromise = client.connect();
-} else {
-  // En desarrollo local, usar una sola instancia
-  client = new MongoClient(uri, {
-    serverApi: {
-      version: ServerApiVersion.v1,
-      strict: true,
-      deprecationErrors: true,
-    },
-  });
-  clientPromise = client.connect();
-}
-
-// 🔹 Función para obtener el cliente Mongo
+// Función para obtener el cliente Mongo
 async function getMongoClient() {
-  if (isVercel) {
-    return await clientPromise;
+  // Si no hay cliente, crear uno nuevo
+  if (!client) {
+    client = new MongoClient(uri, {
+      serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+      },
+    });
   }
-  if (!client.topology || !client.topology.isConnected()) {
+  
+  // Verificar si ya está conectado
+  try {
+    if (client.topology && client.topology.isConnected()) {
+      return client;
+    }
+  } catch (e) {
+    // topology puede no existir todavía
+  }
+  
+  // Conectar si no está conectado
+  try {
     await client.connect();
+  } catch (e) {
+    console.error("Error conectando a MongoDB:", e.message);
   }
+  
   return client;
 }
 
-// 🔹 Conexión inicial (una sola vez) - solo en desarrollo local
+// 🔹 Conexión inicial (una sola vez)
 async function conectarMongo() {
   try {
     const mongoClient = await getMongoClient();
     await mongoClient.db("admin").command({ ping: 1 });
     console.log("✅ Conectado a MongoDB");
   } catch (err) {
-    console.error("❌ Error conectando a MongoDB:", err);
-    if (!isVercel) process.exit(1);
+    console.error("❌ Error conectando a MongoDB:", err.message);
   }
 }
 

@@ -7,6 +7,9 @@
 // CONFIGURACIÓN GLOBAL
 // -----------------------------------------------
 
+// URL base de la API - funciona local y en Vercel
+const API_BASE = ""; // Usar ruta relativa para que funcione en ambos entornos
+
 const PERMISOS_POR_ROL = {
   admin: ["inventario", "facturacion", "usuarios", "reportes", "productos"],
   gerente: ["inventario", "reportes", "productos"],
@@ -133,7 +136,7 @@ async function handleLogin(event) {
 
   // Si no está en demo, consultar validación contra backend MongoDB
   try {
-    const res = await fetch("http://localhost:3000/api/login", {
+    const res = await fetch(API_BASE + "/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password, role })
@@ -141,7 +144,12 @@ async function handleLogin(event) {
 
     const data = await res.json();
     if (!res.ok) {
-      errorDiv.textContent = data.error || "Error al iniciar sesión.";
+      // Verificar si el error es por cuenta no aprobada
+      if (res.status === 403 && data.error.includes("aprobada")) {
+        errorDiv.innerHTML = `${data.error}<br><small>Revisa tu correo o contacta al administrador.</small>`;
+      } else {
+        errorDiv.textContent = data.error || "Error al iniciar sesión.";
+      }
       errorDiv.style.display = "block";
       return;
     }
@@ -198,7 +206,7 @@ async function handleRegistro(event) {
   mostrarAlerta(msgDiv, "Enviando solicitud al servidor...", "success");
 
   try {
-    const res = await fetch("http://localhost:3000/api/registro", {
+    const res = await fetch(API_BASE + "/api/registro", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nombre, email, username, password, role })
@@ -212,13 +220,16 @@ async function handleRegistro(event) {
 
     mostrarAlerta(
       msgDiv,
-      `¡Registro enviado exitosamente! Se ha enviado un correo al administrador para que apruebe tu cuenta. Redirigiendo al login...`,
+      `✅ ¡Registro enviado exitosamente! <br><br>
+      <strong>Tu cuenta está pendiente de aprobación.</strong><br>
+      Se ha enviado una notificación a <strong>tecnico@pycasas.co</strong> para que revise tu solicitud.<br>
+      <em>Recibirás un correo cuando tu cuenta sea aprobada. No podrás iniciar sesión hasta que sea autorizada.</em>`,
       "success",
     );
     document.getElementById("registro-form").reset();
     setTimeout(() => {
       window.location.href = "login.html";
-    }, 4000);
+    }, 6000);
   } catch (err) {
     console.error("Error al registrar:", err);
     mostrarAlerta(msgDiv, "Error de conexión con el servidor.", "error");
@@ -309,6 +320,7 @@ function initIndex() {
       permiso: "reportes",
     },
     { label: "👥 Registrar Usuario", href: "registro.html", soloRol: "admin" },
+    { label: "⚙️ Gestionar Usuarios", href: "admin_usuarios.html", soloRol: "admin" },
   ];
 
   // Generar sidebar
@@ -1977,6 +1989,7 @@ function generarSidebar(sesion, paginaActual) {
       permiso: "reportes",
     },
     { label: "👥 Registrar Usuario", href: "registro.html", soloRol: "admin" },
+    { label: "⚙️ Gestionar Usuarios", href: "admin_usuarios.html", soloRol: "admin" },
   ];
 
   const ul = document.createElement("ul");
@@ -2055,7 +2068,7 @@ function cargarUltimaSincronizacionGuardada() {
 
 async function verificarConexionMongo() {
   try {
-    const res = await fetch("http://localhost:3000/api/health");
+    const res = await fetch(API_BASE + "/api/health");
     if (!res.ok) throw new Error("No disponible");
     mostrarEstadoMongo("Conectado", "ok");
   } catch (err) {
@@ -2071,7 +2084,7 @@ async function exportarDatos() {
   const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
 
   try {
-    const res = await fetch("http://localhost:3000/api/exportar", {
+    const res = await fetch(API_BASE + "/api/exportar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ alquileres, productos, test: obtenerSesion()?.isTest || false }),

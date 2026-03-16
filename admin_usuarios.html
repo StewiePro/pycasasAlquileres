@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Usuarios Pendientes - Gestión PYME</title>
+    <style>
+      .admin-container {
+        max-width: 900px;
+        margin: 50px auto;
+        padding: 20px;
+      }
+      .user-card {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .user-info h3 {
+        margin: 0 0 10px 0;
+        color: #333;
+      }
+      .user-info p {
+        margin: 5px 0;
+        color: #666;
+      }
+      .user-actions {
+        display: flex;
+        gap: 10px;
+      }
+      .btn-approve {
+        background: #28a745;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .btn-reject {
+        background: #dc3545;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .pending-count {
+        background: #ffc107;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="admin-container">
+      <h1>👥 Gestión de Usuarios</h1>
+      <p>Usuarios pendientes de aprobación</p>
+      
+      <div id="usuarios-pendientes">
+        <p>Cargando usuarios...</p>
+      </div>
+    </div>
+
+    <script>
+      async function cargarUsuariosPendientes() {
+        const container = document.getElementById('usuarios-pendientes');
+        
+        try {
+          const res = await fetch('/api/usuarios-pendientes');
+          const usuarios = await res.json();
+          
+          if (usuarios.length === 0) {
+            container.innerHTML = '<p style="color: #666;">No hay usuarios pendientes de aprobación.</p>';
+            return;
+          }
+          
+          container.innerHTML = usuarios.map(u => `
+            <div class="user-card">
+              <div class="user-info">
+                <h3>${u.nombre}</h3>
+                <p><strong>Usuario:</strong> ${u.username}</p>
+                <p><strong>Email:</strong> ${u.email}</p>
+                <p><strong>Rol:</strong> ${u.role}</p>
+                <p><strong>Fecha:</strong> ${new Date(u.fechaRegistro).toLocaleDateString('es-CO')}</p>
+              </div>
+              <div class="user-actions">
+                <button class="btn-approve" onclick="aprobarUsuario('${u._id}')">✅ Aprobar</button>
+                <button class="btn-reject" onclick="rechazarUsuario('${u._id}')">❌ Rechazar</button>
+              </div>
+            </div>
+          `).join('');
+        } catch (err) {
+          container.innerHTML = '<p style="color: red;">Error cargando usuarios.</p>';
+          console.error(err);
+        }
+      }
+      
+      async function aprobarUsuario(id) {
+        if (!confirm('¿Estás seguro de aprobar este usuario?')) return;
+        
+        try {
+          const res = await fetch(`/api/aprobar-usuario-id/${id}`, {
+            method: 'POST'
+          });
+          
+          if (res.ok) {
+            alert('✅ Usuario aprobado correctamente');
+            cargarUsuariosPendientes();
+          } else {
+            alert('❌ Error al aprobar usuario');
+          }
+        } catch (err) {
+          alert('❌ Error de conexión');
+        }
+      }
+      
+      async function rechazarUsuario(id) {
+        if (!confirm('¿Estás seguro de rechazar este usuario? Esta acción no se puede deshacer.')) return;
+        
+        try {
+          const res = await fetch(`/api/rechazar-usuario-id/${id}`, {
+            method: 'POST'
+          });
+          
+          if (res.ok) {
+            alert('❌ Usuario rechazado');
+            cargarUsuariosPendientes();
+          } else {
+            alert('❌ Error al rechazar usuario');
+          }
+        } catch (err) {
+          alert('❌ Error de conexión');
+        }
+      }
+      
+      cargarUsuariosPendientes();
+    </script>
+  </body>
+</html>

@@ -1622,7 +1622,8 @@ async function cargarHistorialDevoluciones() {
   if (!div) return;
 
   try {
-    const res = await fetch();
+    const isTest = obtenerSesion()?.isTest || false;
+    const res = await fetch(API_BASE + "/api/alquileres?test=" + isTest);
     const alquileres = await res.json();
 
     const devueltos = alquileres
@@ -1665,7 +1666,8 @@ async function cargarProductos() {
   if (!div) return;
 
   try {
-    const res = await fetch();
+    const isTest = obtenerSesion()?.isTest || false;
+    const res = await fetch(API_BASE + "/api/productos?test=" + isTest);
     const productos = await res.json();
 
     if (productos.length === 0) {
@@ -2112,11 +2114,12 @@ async function exportarDatos() {
  */
 async function cargarDatosDesdeMongo() {
   try {
-    const productosRes = await fetch();
+    const isTest = obtenerSesion()?.isTest || false;
+    const productosRes = await fetch(API_BASE + "/api/productos?test=" + isTest);
     if (!productosRes.ok) throw new Error("Error cargando productos");
     const productos = await productosRes.json();
 
-    const alquileresRes = await fetch();
+    const alquileresRes = await fetch(API_BASE + "/api/alquileres?test=" + isTest);
     if (!alquileresRes.ok) throw new Error("Error cargando alquileres");
     const alquileres = await alquileresRes.json();
 

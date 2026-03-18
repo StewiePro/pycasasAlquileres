@@ -14,7 +14,7 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // Detectar directorio base para archivos estáticos
-// En Vercel usa process.cwd(), en local usa __dirname
+
 const baseDir = process.cwd();
 
 // Servir archivos estáticos (HTML, CSS, JS)

@@ -39,7 +39,7 @@ async function initMailer() {
       service: "gmail",
       auth: {
         user: "c.pycasas@gmail.com",
-        pass: "rrivumatfjxoorey", 
+        pass: "rrivumatfjxoorey",
       },
     });
     console.log("✉️ Nodemailer (SMTP Dreamhost) listo para producción");
@@ -69,7 +69,7 @@ async function getMongoClient() {
       },
     });
   }
-  
+
   // Verificar si ya está conectado
   try {
     if (client.topology && client.topology.isConnected()) {
@@ -78,14 +78,14 @@ async function getMongoClient() {
   } catch (e) {
     // topology puede no existir todavía
   }
-  
+
   // Conectar si no está conectado
   try {
     await client.connect();
   } catch (e) {
     console.error("Error conectando a MongoDB:", e.message);
   }
-  
+
   return client;
 }
 
@@ -145,8 +145,9 @@ app.get("/api/alquileres", async (req, res) => {
 // Reemplaza completamente colecciones para mantener consistencia con localStorage
 app.post("/api/exportar", async (req, res) => {
   try {
-    const { productos = [], alquileres = [], isTest = false } = req.body;
-    const dbName = isTest ? "pycasas_test" : "pycasas";
+    const { productos = [], alquileres = [], isTest, test } = req.body;
+    const usarTest = isTest === true || test === true;
+    const dbName = usarTest ? "pycasas_test" : "pycasas";
     const mongoClient = await getMongoClient();
     const db = mongoClient.db(dbName);
 
@@ -186,19 +187,23 @@ app.post("/api/registro", async (req, res) => {
 
     const existente = await usuarios.findOne({ username });
     if (existente) {
-      return res.status(400).json({ error: "El nombre de usuario ya está en uso." });
+      return res
+        .status(400)
+        .json({ error: "El nombre de usuario ya está en uso." });
     }
 
     // Verificar si el email ya está registrado
     const emailExistente = await usuarios.findOne({ email });
     if (emailExistente) {
-      return res.status(400).json({ error: "El correo electrónico ya está registrado." });
+      return res
+        .status(400)
+        .json({ error: "El correo electrónico ya está registrado." });
     }
 
     const salt = await bcrypt.genSalt(10);
     const hashPassword = await bcrypt.hash(password, salt);
-    const tokenAprobacion = crypto.randomBytes(20).toString('hex');
-    const tokenRechazo = crypto.randomBytes(20).toString('hex');
+    const tokenAprobacion = crypto.randomBytes(20).toString("hex");
+    const tokenRechazo = crypto.randomBytes(20).toString("hex");
 
     const nuevoUsuario = {
       nombre,
@@ -210,14 +215,14 @@ app.post("/api/registro", async (req, res) => {
       aprobado: false,
       tokenAprobacion: tokenAprobacion,
       tokenRechazo: tokenRechazo,
-      fechaRegistro: new Date()
+      fechaRegistro: new Date(),
     };
 
     await usuarios.insertOne(nuevoUsuario);
 
     const linkApprove = `http://localhost:${PORT}/api/aprobar-usuario?token=${tokenAprobacion}`;
     const linkReject = `http://localhost:${PORT}/api/rechazar-usuario?token=${tokenRechazo}`;
-    
+
     const mailOptions = {
       from: '"Gestión PYME - Solicitud de Usuario" <c.pycasas@gmail.com>',
       to: "tecnico@pycasas.co",
@@ -244,7 +249,7 @@ app.post("/api/registro", async (req, res) => {
           </tr>
           <tr>
             <td style="padding: 10px;"><strong>Fecha de solicitud:</strong></td>
-            <td style="padding: 10px;">${new Date().toLocaleString('es-CO')}</td>
+            <td style="padding: 10px;">${new Date().toLocaleString("es-CO")}</td>
           </tr>
         </table>
         <p>Por favor, revisa la solicitud y decide si aprobar o rechazar:</p>
@@ -253,18 +258,26 @@ app.post("/api/registro", async (req, res) => {
           <a href="${linkReject}" style="display: inline-block; padding: 12px 24px; background: #dc3545; color: #fff; text-decoration: none; border-radius: 5px;">❌ Rechazar Usuario</a>
         </div>
         <p style="color: #666; font-size: 12px; margin-top: 20px;">Este es un mensaje automático del sistema de Gestión PYME.</p>
-      </div>`
+      </div>`,
     };
 
     try {
       const info = await transporter.sendMail(mailOptions);
-      console.log("📩 Correo de aprobación enviado a tecnico@pycasas.co:", info.messageId);
+      console.log(
+        "📩 Correo de aprobación enviado a tecnico@pycasas.co:",
+        info.messageId,
+      );
     } catch (emailErr) {
       console.error("❌ Error enviando correo:", emailErr);
-      return res.status(500).json({ error: "Error al enviar el correo de notificación." });
+      return res
+        .status(500)
+        .json({ error: "Error al enviar el correo de notificación." });
     }
 
-    res.json({ ok: true, msg: "Usuario registrado correctamente. Se ha enviado una notificación a tecnico@pycasas.co para aprobar tu cuenta. No podrás iniciar sesión hasta que sea aprobada." });
+    res.json({
+      ok: true,
+      msg: "Usuario registrado correctamente. Se ha enviado una notificación a tecnico@pycasas.co para aprobar tu cuenta. No podrás iniciar sesión hasta que sea aprobada.",
+    });
   } catch (err) {
     console.error("❌ Error en registro:", err);
     res.status(500).json({ error: err.message });
@@ -278,16 +291,23 @@ app.get("/api/aprobar-usuario", async (req, res) => {
 
     const mongoClient = await getMongoClient();
     const db = mongoClient.db("pycasas");
-    const usuario = await db.collection("usuarios").findOne({ tokenAprobacion: token });
-    
+    const usuario = await db
+      .collection("usuarios")
+      .findOne({ tokenAprobacion: token });
+
     if (!usuario) {
       return res.send("<h1>Token inválido o usuario ya aprobado.</h1>");
     }
 
-    await db.collection("usuarios").updateOne(
-      { _id: usuario._id },
-      { $set: { activo: true, aprobado: true, fechaAprobacion: new Date() }, $unset: { tokenAprobacion: "", tokenRechazo: "" } }
-    );
+    await db
+      .collection("usuarios")
+      .updateOne(
+        { _id: usuario._id },
+        {
+          $set: { activo: true, aprobado: true, fechaAprobacion: new Date() },
+          $unset: { tokenAprobacion: "", tokenRechazo: "" },
+        },
+      );
 
     // Enviar correo de notificación al usuario aprobado
     const mailOptionsAprobado = {
@@ -305,14 +325,17 @@ app.get("/api/aprobar-usuario", async (req, res) => {
         <p>Ahora puedes iniciar sesión en el sistema:</p>
         <a href="http://localhost:3000/login.html" style="display: inline-block; padding: 12px 24px; background: #0066cc; color: #fff; text-decoration: none; border-radius: 5px;">Iniciar Sesión</a>
         <p style="color: #666; font-size: 12px; margin-top: 20px;">Este es un mensaje automático del sistema de Gestión PYME.</p>
-      </div>`
+      </div>`,
     };
 
     try {
       await transporter.sendMail(mailOptionsAprobado);
       console.log("📩 Correo de aprobación enviado al usuario:", usuario.email);
     } catch (emailErr) {
-      console.error("❌ Error enviando correo de aprobación al usuario:", emailErr);
+      console.error(
+        "❌ Error enviando correo de aprobación al usuario:",
+        emailErr,
+      );
     }
 
     res.send(`<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; text-align: center;">
@@ -334,8 +357,10 @@ app.get("/api/rechazar-usuario", async (req, res) => {
 
     const mongoClient = await getMongoClient();
     const db = mongoClient.db("pycasas");
-    const usuario = await db.collection("usuarios").findOne({ tokenRechazo: token });
-    
+    const usuario = await db
+      .collection("usuarios")
+      .findOne({ tokenRechazo: token });
+
     if (!usuario) {
       return res.send("<h1>Token inválido o usuario ya procesado.</h1>");
     }
@@ -361,14 +386,17 @@ app.get("/api/rechazar-usuario", async (req, res) => {
         </div>
         <p>Si crees que esto es un error, por favor contacta al administrador del sistema.</p>
         <p style="color: #666; font-size: 12px; margin-top: 20px;">Este es un mensaje automático del sistema de Gestión PYME.</p>
-      </div>`
+      </div>`,
     };
 
     try {
       await transporter.sendMail(mailOptionsRechazado);
       console.log("📩 Correo de rechazo enviado al usuario:", emailUsuario);
     } catch (emailErr) {
-      console.error("❌ Error enviando correo de rechazo al usuario:", emailErr);
+      console.error(
+        "❌ Error enviando correo de rechazo al usuario:",
+        emailErr,
+      );
     }
 
     res.send(`<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; text-align: center;">
@@ -388,18 +416,21 @@ app.get("/api/usuarios-pendientes", async (req, res) => {
   try {
     const mongoClient = await getMongoClient();
     const db = mongoClient.db("pycasas");
-    const usuarios = await db.collection("usuarios").find({ activo: false }).toArray();
-    
+    const usuarios = await db
+      .collection("usuarios")
+      .find({ activo: false })
+      .toArray();
+
     // Limpiar tokens antes de enviar
-    const usuariosLimpios = usuarios.map(u => ({
+    const usuariosLimpios = usuarios.map((u) => ({
       _id: u._id,
       nombre: u.nombre,
       email: u.email,
       username: u.username,
       role: u.role,
-      fechaRegistro: u.fechaRegistro
+      fechaRegistro: u.fechaRegistro,
     }));
-    
+
     res.json(usuariosLimpios);
   } catch (err) {
     console.error("❌ Error obteniendo usuarios pendientes:", err);
@@ -413,16 +444,23 @@ app.post("/api/aprobar-usuario-id/:id", async (req, res) => {
     const { id } = req.params;
     const mongoClient = await getMongoClient();
     const db = mongoClient.db("pycasas");
-    const usuario = await db.collection("usuarios").findOne({ _id: new ObjectId(id) });
-    
+    const usuario = await db
+      .collection("usuarios")
+      .findOne({ _id: new ObjectId(id) });
+
     if (!usuario) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
-    await db.collection("usuarios").updateOne(
-      { _id: new ObjectId(id) },
-      { $set: { activo: true, aprobado: true, fechaAprobacion: new Date() }, $unset: { tokenAprobacion: "", tokenRechazo: "" } }
-    );
+    await db
+      .collection("usuarios")
+      .updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $set: { activo: true, aprobado: true, fechaAprobacion: new Date() },
+          $unset: { tokenAprobacion: "", tokenRechazo: "" },
+        },
+      );
 
     // Enviar correo de notificación al usuario aprobado
     const mailOptionsAprobado = {
@@ -434,7 +472,7 @@ app.post("/api/aprobar-usuario-id/:id", async (req, res) => {
         <p>Hola <strong>${usuario.nombre}</strong>,</p>
         <p>Tu cuenta ha sido <strong>aprobada</strong> por el administrador y ahora puedes acceder al sistema.</p>
         <a href="http://localhost:3000/login.html" style="display: inline-block; padding: 12px 24px; background: #0066cc; color: #fff; text-decoration: none; border-radius: 5px;">Iniciar Sesión</a>
-      </div>`
+      </div>`,
     };
 
     await transporter.sendMail(mailOptionsAprobado);
@@ -451,8 +489,10 @@ app.post("/api/rechazar-usuario-id/:id", async (req, res) => {
     const { id } = req.params;
     const mongoClient = await getMongoClient();
     const db = mongoClient.db("pycasas");
-    const usuario = await db.collection("usuarios").findOne({ _id: new ObjectId(id) });
-    
+    const usuario = await db
+      .collection("usuarios")
+      .findOne({ _id: new ObjectId(id) });
+
     if (!usuario) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
@@ -473,7 +513,7 @@ app.post("/api/rechazar-usuario-id/:id", async (req, res) => {
         <p>Hola <strong>${usuario.nombre}</strong>,</p>
         <p>Lamentamos informarte que tu solicitud ha sido rechazada.</p>
         <p>Contacta al administrador para más información.</p>
-      </div>`
+      </div>`,
     };
 
     await transporter.sendMail(mailOptionsRechazado);
@@ -487,12 +527,12 @@ app.post("/api/rechazar-usuario-id/:id", async (req, res) => {
 app.post("/api/login", async (req, res) => {
   try {
     const { username, password, role } = req.body;
-    
+
     // Primero, revisar si es un usuario temporal (ej. USUARIOS_DEMO/Pruebas) almacenado desde front
     // Para no romper la funcionalidad de la demo de Pruebas:
     if (req.body.isDemoUser) {
       // Dejamos que el frontend lo maneje si es isDemoUser, esto es un fallback vacío
-      return res.json({ ok: true }); 
+      return res.json({ ok: true });
     }
 
     const mongoClient = await getMongoClient();
@@ -500,23 +540,40 @@ app.post("/api/login", async (req, res) => {
     const usuario = await db.collection("usuarios").findOne({ username });
 
     if (!usuario) {
-      return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
+      return res
+        .status(401)
+        .json({ error: "Usuario o contraseña incorrectos" });
     }
 
     const isMatch = await bcrypt.compare(password, usuario.password);
     if (!isMatch) {
-      return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
+      return res
+        .status(401)
+        .json({ error: "Usuario o contraseña incorrectos" });
     }
 
     if (usuario.role !== role) {
-      return res.status(401).json({ error: "Rol incorrecto para este usuario" });
+      return res
+        .status(401)
+        .json({ error: "Rol incorrecto para este usuario" });
     }
 
     if (!usuario.activo) {
-      return res.status(403).json({ error: "Tu cuenta aún no ha sido aprobada por tecnico@pycasas.co" });
+      return res
+        .status(403)
+        .json({
+          error: "Tu cuenta aún no ha sido aprobada por tecnico@pycasas.co",
+        });
     }
 
-    res.json({ ok: true, usuario: { username: usuario.username, role: usuario.role, isTest: false } });
+    res.json({
+      ok: true,
+      usuario: {
+        username: usuario.username,
+        role: usuario.role,
+        isTest: false,
+      },
+    });
   } catch (err) {
     console.error("❌ Error en login:", err);
     res.status(500).json({ error: err.message });

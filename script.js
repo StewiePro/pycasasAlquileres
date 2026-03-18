@@ -1,4 +1,4 @@
-/* =============================================
+﻿/* =============================================
    SCRIPT.JS - Gestión PYME
    Todas las funciones organizadas por página
    ============================================= */
@@ -8,7 +8,19 @@
 // -----------------------------------------------
 
 // URL base de la API - funciona local y en Vercel
-const API_BASE = ""; // Usar ruta relativa para que funcione en ambos entornos
+const API_BASE = (() => {
+  const { protocol, hostname, port } = window.location;
+  const esHostLocal = hostname === "localhost" || hostname === "127.0.0.1";
+
+  // Si se abre el HTML como archivo local o desde otro puerto (ej. Live Server),
+  // apuntar explícitamente al backend en 3000.
+  if (protocol === "file:" || (esHostLocal && port && port !== "3000")) {
+    return "http://localhost:3000";
+  }
+
+  // En Express (mismo origen) y en despliegues (Vercel), usar ruta relativa.
+  return "";
+})();
 
 const PERMISOS_POR_ROL = {
   admin: ["inventario", "facturacion", "usuarios", "reportes", "productos"],
@@ -37,6 +49,25 @@ function obtenerClaveStorage(base) {
   return base;
 }
 
+function normalizarIdValor(valor) {
+  if (valor === null || valor === undefined) return "";
+  if (typeof valor === "object") {
+    if (typeof valor.$oid === "string") return valor.$oid;
+    if (typeof valor.toHexString === "function") return valor.toHexString();
+    try {
+      return JSON.stringify(valor);
+    } catch (err) {
+      return String(valor);
+    }
+  }
+  return String(valor);
+}
+
+function obtenerIdRegistro(registro) {
+  if (!registro) return "";
+  return normalizarIdValor(registro.id ?? registro._id);
+}
+
 // -----------------------------------------------
 // SESIÓN - Funciones compartidas
 // -----------------------------------------------
@@ -61,18 +92,18 @@ function verificarSesion() {
   }
   const spanRol = document.getElementById("current-role");
   if (spanRol) spanRol.textContent = sesion.role;
-  
+
   if (sesion.isTest) {
     const header = document.querySelector("header");
     if (header) {
       header.style.backgroundColor = "#d35400"; // Orange for test mode
       const logo = document.querySelector(".logo");
       if (logo && !logo.textContent.includes("PRUEBAS")) {
-         logo.textContent = logo.textContent + " [MODO PRUEBAS]";
+        logo.textContent = logo.textContent + " [MODO PRUEBAS]";
       }
     }
   }
-  
+
   return sesion;
 }
 
@@ -139,7 +170,7 @@ async function handleLogin(event) {
     const res = await fetch(API_BASE + "/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password, role })
+      body: JSON.stringify({ username, password, role }),
     });
 
     const data = await res.json();
@@ -209,7 +240,7 @@ async function handleRegistro(event) {
     const res = await fetch(API_BASE + "/api/registro", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre, email, username, password, role })
+      body: JSON.stringify({ nombre, email, username, password, role }),
     });
 
     const data = await res.json();
@@ -320,7 +351,11 @@ function initIndex() {
       permiso: "reportes",
     },
     { label: "👥 Registrar Usuario", href: "registro.html", soloRol: "admin" },
-    { label: "⚙️ Gestionar Usuarios", href: "admin_usuarios.html", soloRol: "admin" },
+    {
+      label: "⚙️ Gestionar Usuarios",
+      href: "admin_usuarios.html",
+      soloRol: "admin",
+    },
   ];
 
   // Generar sidebar
@@ -353,7 +388,9 @@ function initIndex() {
   // Estadísticas de inicio
   const statsDiv = document.getElementById("stats-inicio");
   if (statsDiv && sesion.permisos.includes("productos")) {
-    const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
+    const productos = JSON.parse(
+      localStorage.getItem(obtenerClaveStorage("productos")) || "[]",
+    );
     const totalStock = productos.reduce((s, p) => s + p.stock, 0);
     const stockBajo = productos.filter(
       (p) => p.stock <= (p.stockMin || 0),
@@ -404,7 +441,9 @@ function guardarProducto(event) {
     creadoPor: sesion ? sesion.username : "desconocido",
   };
 
-  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
+  const productos = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("productos")) || "[]",
+  );
 
   if (productos.find((p) => p.codigo === producto.codigo)) {
     mostrarAlerta(
@@ -416,7 +455,10 @@ function guardarProducto(event) {
   }
 
   productos.push(producto);
-  localStorage.setItem(obtenerClaveStorage("productos"), JSON.stringify(productos));
+  localStorage.setItem(
+    obtenerClaveStorage("productos"),
+    JSON.stringify(productos),
+  );
   mostrarAlerta(
     msgDiv,
     `Producto "${producto.nombre}" guardado exitosamente.`,
@@ -448,7 +490,9 @@ function initProductosEdicion() {
  */
 function buscarProductoEdicion() {
   const texto = document.getElementById("buscar-input").value.toLowerCase();
-  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
+  const productos = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("productos")) || "[]",
+  );
   const div = document.getElementById("tabla-busqueda");
   if (!texto) {
     div.innerHTML = "";
@@ -476,7 +520,7 @@ function buscarProductoEdicion() {
           <tr>
             <td>${p.codigo}</td><td>${p.nombre}</td><td>${p.categoria}</td>
             <td>$${p.precio.toLocaleString("es-CO")}</td><td>${p.stock}</td>
-            <td><button class="btn btn-sm btn-primary" onclick='cargarEdicion(${JSON.stringify(p)})'>✏️ Editar</button></td>
+            <td><button class="btn btn-sm btn-primary" onclick="cargarEdicionPorId('${encodeURIComponent(obtenerIdRegistro(p))}')">✏️ Editar</button></td>
           </tr>`,
           )
           .join("")}
@@ -484,11 +528,21 @@ function buscarProductoEdicion() {
     </table>`;
 }
 
+function cargarEdicionPorId(idCodificado) {
+  const idBuscado = decodeURIComponent(idCodificado || "");
+  const productos = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("productos")) || "[]",
+  );
+  const producto = productos.find((p) => obtenerIdRegistro(p) === idBuscado);
+  if (!producto) return;
+  cargarEdicion(producto);
+}
+
 /**
  * Carga los datos de un producto en el formulario de edición.
  */
 function cargarEdicion(p) {
-  document.getElementById("edit-id").value = p.id;
+  document.getElementById("edit-id").value = obtenerIdRegistro(p);
   document.getElementById("edit-codigo").value = p.codigo;
   document.getElementById("edit-nombre").value = p.nombre;
   document.getElementById("edit-categoria").value = p.categoria;
@@ -509,9 +563,11 @@ function cargarEdicion(p) {
 function actualizarProducto(event) {
   event.preventDefault();
   const sesion = obtenerSesion();
-  const id = parseInt(document.getElementById("edit-id").value);
-  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
-  const idx = productos.findIndex((p) => p.id === id);
+  const id = normalizarIdValor(document.getElementById("edit-id").value);
+  const productos = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("productos")) || "[]",
+  );
+  const idx = productos.findIndex((p) => obtenerIdRegistro(p) === id);
   if (idx === -1) return;
 
   productos[idx] = {
@@ -528,7 +584,10 @@ function actualizarProducto(event) {
     editadoPor: sesion ? sesion.username : "desconocido",
   };
 
-  localStorage.setItem(obtenerClaveStorage("productos"), JSON.stringify(productos));
+  localStorage.setItem(
+    obtenerClaveStorage("productos"),
+    JSON.stringify(productos),
+  );
   const msgDiv = document.getElementById("edit-msg");
   mostrarAlerta(
     msgDiv,
@@ -572,7 +631,9 @@ function initProductosEliminacion() {
  */
 function buscarProductoEliminacion() {
   const texto = document.getElementById("buscar-input").value.toLowerCase();
-  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
+  const productos = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("productos")) || "[]",
+  );
   const div = document.getElementById("tabla-busqueda");
   if (!texto) {
     div.innerHTML = "";
@@ -601,12 +662,17 @@ function buscarProductoEliminacion() {
             <td>${p.codigo}</td><td>${p.nombre}</td><td>${p.categoria}</td>
             <td><span class="badge ${p.stock <= (p.stockMin || 0) ? "badge-danger" : "badge-success"}">${p.stock}</span></td>
             <td>$${p.precio.toLocaleString("es-CO")}</td>
-            <td><button class="btn btn-sm btn-danger" onclick="solicitarEliminar(${p.id}, '${p.nombre.replace(/'/g, "\\'")}')">🗑️ Eliminar</button></td>
+            <td><button class="btn btn-sm btn-danger" onclick="solicitarEliminarPorId('${encodeURIComponent(obtenerIdRegistro(p))}', '${p.nombre.replace(/'/g, "\\'")}')">🗑️ Eliminar</button></td>
           </tr>`,
           )
           .join("")}
       </tbody>
     </table>`;
+}
+
+function solicitarEliminarPorId(idCodificado, nombre) {
+  const id = decodeURIComponent(idCodificado || "");
+  solicitarEliminar(id, nombre);
 }
 
 /**
@@ -622,10 +688,16 @@ function solicitarEliminar(id, nombre) {
  * Confirma y ejecuta la eliminación del producto seleccionado.
  */
 function confirmarEliminar() {
-  let productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
-  const prod = productos.find((p) => p.id === _idParaEliminar);
-  productos = productos.filter((p) => p.id !== _idParaEliminar);
-  localStorage.setItem(obtenerClaveStorage("productos"), JSON.stringify(productos));
+  let productos = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("productos")) || "[]",
+  );
+  const idEliminar = normalizarIdValor(_idParaEliminar);
+  const prod = productos.find((p) => obtenerIdRegistro(p) === idEliminar);
+  productos = productos.filter((p) => obtenerIdRegistro(p) !== idEliminar);
+  localStorage.setItem(
+    obtenerClaveStorage("productos"),
+    JSON.stringify(productos),
+  );
 
   const msgDiv = document.getElementById("delete-msg");
   mostrarAlerta(
@@ -671,7 +743,9 @@ function initProductosVisualizacion() {
  * Carga las estadísticas rápidas del inventario en la página de visualización.
  */
 function cargarEstadisticasVisualizacion() {
-  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
+  const productos = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("productos")) || "[]",
+  );
   const total = productos.length;
   const totalStock = productos.reduce((s, p) => s + p.stock, 0);
   const stockBajo = productos.filter(
@@ -698,7 +772,9 @@ function aplicarFiltros() {
   ).toLowerCase();
   const cat = document.getElementById("filtro-cat")?.value || "";
   const stockFilt = document.getElementById("filtro-stock")?.value || "";
-  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
+  const productos = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("productos")) || "[]",
+  );
 
   const lista = productos.filter((p) => {
     const ct =
@@ -791,7 +867,9 @@ function initReportes() {
  * Genera todos los reportes del inventario.
  */
 function generarReportes() {
-  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
+  const productos = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("productos")) || "[]",
+  );
 
   if (productos.length === 0) {
     const kpis = document.getElementById("kpis");
@@ -991,7 +1069,10 @@ function obtenerSiguienteConsecutivoDocumental(alquileres = []) {
   });
 
   const siguiente = Math.max(guardado, maxDesdeDatos) + 1;
-  localStorage.setItem(obtenerClaveStorage("consecutivoDocumental"), String(siguiente));
+  localStorage.setItem(
+    obtenerClaveStorage("consecutivoDocumental"),
+    String(siguiente),
+  );
   return siguiente;
 }
 
@@ -1033,7 +1114,9 @@ function buscarArticuloAlquiler() {
     return;
   }
 
-  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
+  const productos = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("productos")) || "[]",
+  );
   const encontrados = productos.filter(
     (p) =>
       (p.codigo.toLowerCase().includes(texto) ||
@@ -1060,7 +1143,7 @@ function buscarArticuloAlquiler() {
             <td>${p.categoria}</td>
             <td><span class="badge badge-success">${p.stock}</span></td>
             <td>$${p.precio.toLocaleString("es-CO")}</td>
-            <td><button type="button" class="btn btn-sm btn-primary" onclick='agregarItemAlquiler(${JSON.stringify(p)})'>➕ Agregar</button></td>
+            <td><button type="button" class="btn btn-sm btn-primary" onclick="agregarItemAlquilerPorId('${encodeURIComponent(obtenerIdRegistro(p))}')">➕ Agregar</button></td>
           </tr>`,
           )
           .join("")}
@@ -1068,11 +1151,27 @@ function buscarArticuloAlquiler() {
     </table>`;
 }
 
+function agregarItemAlquilerPorId(idCodificado) {
+  const idBuscado = decodeURIComponent(idCodificado || "");
+  const productos = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("productos")) || "[]",
+  );
+  const producto = productos.find((p) => obtenerIdRegistro(p) === idBuscado);
+  if (!producto) {
+    alert("No se encontro el producto seleccionado.");
+    return;
+  }
+  agregarItemAlquiler(producto);
+}
+
 /**
  * Agrega un artículo a la lista temporal del alquiler.
  */
 function agregarItemAlquiler(p) {
-  const existente = _itemsAlquiler.find((i) => i.productoId === p.id);
+  const productoId = obtenerIdRegistro(p);
+  const existente = _itemsAlquiler.find(
+    (i) => normalizarIdValor(i.productoId) === productoId,
+  );
 
   if (existente) {
     // Si ya existe, pedimos una nueva cantidad
@@ -1112,7 +1211,7 @@ function agregarItemAlquiler(p) {
     }
 
     _itemsAlquiler.push({
-      productoId: p.id,
+      productoId,
       codigo: p.codigo,
       nombre: p.nombre,
       stockDisponible: p.stock,
@@ -1255,15 +1354,21 @@ function guardarAlquiler(event) {
     0,
   );
   const fechaSalidaActual = new Date();
-  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
+  const alquileres = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]",
+  );
   const consecutivoDoc = obtenerSiguienteConsecutivoDocumental(alquileres);
   const remisionNumero = formatearNumeroRemision(consecutivoDoc);
   const facturaNumero = formatearNumeroFactura(consecutivoDoc);
 
   // Verificar stock disponible antes de guardar
-  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
+  const productos = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("productos")) || "[]",
+  );
   for (const item of _itemsAlquiler) {
-    const prod = productos.find((p) => p.id === item.productoId);
+    const prod = productos.find(
+      (p) => obtenerIdRegistro(p) === normalizarIdValor(item.productoId),
+    );
     if (!prod || prod.stock < item.cantidad) {
       mostrarAlerta(
         msgDiv,
@@ -1299,13 +1404,21 @@ function guardarAlquiler(event) {
 
   // Descontar stock
   _itemsAlquiler.forEach((item) => {
-    const idx = productos.findIndex((p) => p.id === item.productoId);
+    const idx = productos.findIndex(
+      (p) => obtenerIdRegistro(p) === normalizarIdValor(item.productoId),
+    );
     if (idx !== -1) productos[idx].stock -= item.cantidad;
   });
-  localStorage.setItem(obtenerClaveStorage("productos"), JSON.stringify(productos));
+  localStorage.setItem(
+    obtenerClaveStorage("productos"),
+    JSON.stringify(productos),
+  );
 
   alquileres.push(alquiler);
-  localStorage.setItem(obtenerClaveStorage("alquileres"), JSON.stringify(alquileres));
+  localStorage.setItem(
+    obtenerClaveStorage("alquileres"),
+    JSON.stringify(alquileres),
+  );
 
   mostrarAlerta(
     msgDiv,
@@ -1337,10 +1450,10 @@ function limpiarFormAlquiler() {
 function cargarAlquileresActivos() {
   const div = document.getElementById("tabla-alquileres-activos");
   if (!div) return;
-  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
-  const activos = alquileres
-    .slice()
-    .reverse();
+  const alquileres = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]",
+  );
+  const activos = alquileres.slice().reverse();
 
   if (activos.length === 0) {
     div.innerHTML = '<p class="text-muted">No hay alquileres activos.</p>';
@@ -1364,7 +1477,7 @@ function cargarAlquileresActivos() {
             <td>${a.items.map((i) => `${i.nombre} (${i.cantidad})`).join(", ")}</td>
             <td>${a.fechaSalida}</td>
             <td>$${(a.totalPagar || 0).toLocaleString("es-CO")}</td>
-            <td><span class="badge ${a.estado === 'devuelto' ? 'badge-success' : 'badge-warning'}">${a.estado === 'devuelto' ? 'Devuelto' : 'Activo'}</span></td>
+            <td><span class="badge ${a.estado === "devuelto" ? "badge-success" : "badge-warning"}">${a.estado === "devuelto" ? "Devuelto" : "Activo"}</span></td>
             <td><a href="remision_salida.html?id=${a.id}" class="btn btn-sm btn-outline" target="_blank">📄 Remisión</a></td>
             <td><a href="factura_alquiler.html?id=${a.id}" class="btn btn-sm btn-primary" target="_blank">🧾 Factura</a></td>
           </tr>`,
@@ -1378,7 +1491,9 @@ function cargarAlquileresActivos() {
  * Genera y descarga el historial completo de alquileres y devoluciones en formato CSV
  */
 function descargarHistorialCSV() {
-  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
+  const alquileres = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]",
+  );
   if (alquileres.length === 0) {
     alert("No hay alquileres en el historial para exportar.");
     return;
@@ -1401,15 +1516,17 @@ function descargarHistorialCSV() {
     "Garantia Cobrada",
     "Total Pagado",
     "Registrado Por",
-    "Observaciones"
+    "Observaciones",
   ];
 
   // Construir filas
-  const filas = alquileres.map(a => {
-    const articulos = a.items.map(i => `${i.nombre} (x${i.cantidad})`).join(" | ");
+  const filas = alquileres.map((a) => {
+    const articulos = a.items
+      .map((i) => `${i.nombre} (x${i.cantidad})`)
+      .join(" | ");
     const fechaDev = a.fechaDevolucionReal || "-";
     const dias = a.dias || 0;
-    
+
     const escapillas = (str) => {
       if (str == null) return '""';
       const text = String(str).replace(/"/g, '""');
@@ -1429,20 +1546,25 @@ function descargarHistorialCSV() {
       dias,
       a.subtotalDia || 0,
       a.garantia || 0,
-      a.garantiaCobrada === true ? (a.garantia || 0) : 0,
+      a.garantiaCobrada === true ? a.garantia || 0 : 0,
       a.totalPagar || 0,
       escapillas(a.registradoPor),
-      escapillas(a.observaciones)
+      escapillas(a.observaciones),
     ].join(",");
   });
 
   const csvContent = [cabeceras.join(","), ...filas].join("\n");
-  const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
-  
+  const blob = new Blob(["\uFEFF" + csvContent], {
+    type: "text/csv;charset=utf-8;",
+  });
+
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
   link.setAttribute("href", url);
-  link.setAttribute("download", `Historial_Alquileres_PYME_${new Date().toISOString().slice(0,10)}.csv`);
+  link.setAttribute(
+    "download",
+    `Historial_Alquileres_PYME_${new Date().toISOString().slice(0, 10)}.csv`,
+  );
   link.style.visibility = "hidden";
   document.body.appendChild(link);
   link.click();
@@ -1498,7 +1620,9 @@ function buscarAlquilerActivo() {
     return;
   }
 
-  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
+  const alquileres = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]",
+  );
   const activos = alquileres.filter(
     (a) =>
       a.estado === "activo" &&
@@ -1538,7 +1662,9 @@ function buscarAlquilerActivo() {
  * Selecciona un alquiler para procesar su devolución.
  */
 function seleccionarAlquilerDevolucion(id) {
-  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
+  const alquileres = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]",
+  );
   _alquilerSeleccionado = alquileres.find((a) => a.id === id) || null;
   if (!_alquilerSeleccionado) return;
 
@@ -1626,7 +1752,9 @@ function confirmarDevolucion() {
     return;
   }
 
-  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
+  const alquileres = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]",
+  );
   const idx = alquileres.findIndex((a) => a.id === _alquilerSeleccionado.id);
   if (idx === -1) return;
 
@@ -1665,15 +1793,25 @@ function confirmarDevolucion() {
   alquileres[idx].totalPagar =
     totalAlquilerBase - (garantiaOriginal - garantiaRetenida);
   alquileres[idx].devueltoPor = sesion ? sesion.username : "desconocido";
-  localStorage.setItem(obtenerClaveStorage("alquileres"), JSON.stringify(alquileres));
+  localStorage.setItem(
+    obtenerClaveStorage("alquileres"),
+    JSON.stringify(alquileres),
+  );
 
   // Restaurar stock
-  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
+  const productos = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("productos")) || "[]",
+  );
   _alquilerSeleccionado.items.forEach((item) => {
-    const pi = productos.findIndex((p) => p.id === item.productoId);
+    const pi = productos.findIndex(
+      (p) => obtenerIdRegistro(p) === normalizarIdValor(item.productoId),
+    );
     if (pi !== -1) productos[pi].stock += item.cantidad;
   });
-  localStorage.setItem(obtenerClaveStorage("productos"), JSON.stringify(productos));
+  localStorage.setItem(
+    obtenerClaveStorage("productos"),
+    JSON.stringify(productos),
+  );
 
   const idAlquilerDevuelto = _alquilerSeleccionado.id;
 
@@ -1703,7 +1841,9 @@ function cargarHistorialDevoluciones() {
   if (!div) return;
 
   try {
-    const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
+    const alquileres = JSON.parse(
+      localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]",
+    );
 
     const devueltos = alquileres
       .filter((a) => a.estado === "devuelto")
@@ -1802,7 +1942,9 @@ function initFacturaAlquiler() {
     return;
   }
 
-  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
+  const alquileres = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]",
+  );
   const a = alquileres.find((x) => x.id === id);
 
   if (!a) {
@@ -1927,7 +2069,9 @@ function initRemisionSalida() {
     return;
   }
 
-  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
+  const alquileres = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]",
+  );
   const a = alquileres.find((x) => x.id === id);
 
   if (!a) {
@@ -2073,10 +2217,24 @@ function generarSidebar(sesion, paginaActual) {
       permiso: "reportes",
     },
     { label: "👥 Registrar Usuario", href: "registro.html", soloRol: "admin" },
-    { label: "⚙️ Gestionar Usuarios", href: "admin_usuarios.html", soloRol: "admin" },
+    {
+      label: "⚙️ Gestionar Usuarios",
+      href: "admin_usuarios.html",
+      soloRol: "admin",
+    },
     // Vistas adicionales que requieren estar autenticados pero no van en el menú principal
-    { label: "Factura", href: "factura_alquiler.html", permiso: "facturacion", hidden: true },
-    { label: "Remision", href: "remision_salida.html", permiso: "facturacion", hidden: true }
+    {
+      label: "Factura",
+      href: "factura_alquiler.html",
+      permiso: "facturacion",
+      hidden: true,
+    },
+    {
+      label: "Remision",
+      href: "remision_salida.html",
+      permiso: "facturacion",
+      hidden: true,
+    },
   ];
 
   const ul = document.createElement("ul");
@@ -2167,14 +2325,19 @@ async function verificarConexionMongo() {
  * Exporta todos los datos de localStorage a MongoDB Atlas.
  */
 async function exportarDatos() {
-  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
-  const productos = JSON.parse(localStorage.getItem(obtenerClaveStorage("productos")) || "[]");
+  const alquileres = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]",
+  );
+  const productos = JSON.parse(
+    localStorage.getItem(obtenerClaveStorage("productos")) || "[]",
+  );
 
   try {
+    const isTest = obtenerSesion()?.isTest || false;
     const res = await fetch(API_BASE + "/api/exportar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ alquileres, productos, test: obtenerSesion()?.isTest || false }),
+      body: JSON.stringify({ alquileres, productos, isTest }),
     });
 
     if (!res.ok) {
@@ -2200,20 +2363,37 @@ async function exportarDatos() {
 async function cargarDatosDesdeMongo() {
   try {
     const isTest = obtenerSesion()?.isTest || false;
-    const productosRes = await fetch(API_BASE + "/api/productos?test=" + isTest);
+    const productosRes = await fetch(
+      API_BASE + "/api/productos?test=" + isTest,
+    );
     if (!productosRes.ok) throw new Error("Error cargando productos");
     const productos = await productosRes.json();
 
-    const alquileresRes = await fetch(API_BASE + "/api/alquileres?test=" + isTest);
+    const alquileresRes = await fetch(
+      API_BASE + "/api/alquileres?test=" + isTest,
+    );
     if (!alquileresRes.ok) throw new Error("Error cargando alquileres");
     const alquileres = await alquileresRes.json();
 
     if (Array.isArray(productos)) {
-      localStorage.setItem(obtenerClaveStorage("productos"), JSON.stringify(productos));
-      console.log("📦 Productos cargados desde Mongo:", productos.length);
+      const productosNormalizados = productos.map((p) => ({
+        ...p,
+        id: p.id ?? normalizarIdValor(p._id),
+      }));
+      localStorage.setItem(
+        obtenerClaveStorage("productos"),
+        JSON.stringify(productosNormalizados),
+      );
+      console.log(
+        "📦 Productos cargados desde Mongo:",
+        productosNormalizados.length,
+      );
     }
     if (Array.isArray(alquileres)) {
-      localStorage.setItem(obtenerClaveStorage("alquileres"), JSON.stringify(alquileres));
+      localStorage.setItem(
+        obtenerClaveStorage("alquileres"),
+        JSON.stringify(alquileres),
+      );
       console.log("📄 Alquileres cargados desde Mongo:", alquileres.length);
 
       // Si no hay historial, reiniciamos el consecutivo documental para empezar en 00000.

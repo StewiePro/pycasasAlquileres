@@ -1,8 +1,9 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="factura_alquiler.css" />
     <title>Factura de Alquiler - Gestión PYME</title>
   </head>
@@ -20,150 +21,119 @@
     <div class="container">
       <nav class="sidebar" id="sidebar"></nav>
       <main>
-        <div class="no-print button-group">
+        <div class="no-print button-group remision-actions">
           <button class="btn btn-primary" onclick="window.print()">
-            🖨️ Imprimir / Guardar PDF
+            🖨️ Imprimir Factura
           </button>
           <a href="alquiler_salida.html" class="btn btn-outline"
-            >← Volver a Alquileres</a
+            >← Volver a Salidas</a
           >
         </div>
 
-        <div id="factura-contenido">
-          <div
-            id="factura-error"
-            class="alert alert-error factura-error-hidden"
-          >
-            No se encontró el alquiler solicitado.
+        <div id="factura-error" class="alert alert-error factura-error-hidden">
+          No se encontró el alquiler solicitado.
+        </div>
+
+        <div class="factura-box remision-hidden" id="factura-box">
+          <div class="factura-header">
+            <div class="factura-empresa">
+              <h2>🧾 Factura de Alquiler</h2>
+              <p>Pycasas Alquileres</p>
+              <p>NIT: 900.502.960-5</p>
+              <p>Tel: 300 380 38 99</p>
+            </div>
+            <div class="factura-numero">
+              <div class="num" id="fact-numero">FVPA-0000</div>
+              <p>Fecha de Emisión: <strong id="fact-fecha-emision">-</strong></p>
+              <p>Fecha de Salida: <strong id="fact-fecha-salida">-</strong></p>
+              <p>Fecha Devolución: <strong id="fact-fecha-devolucion">-</strong></p>
+              <span class="factura-badge" id="fact-estado-badge">ACTIVO</span>
+            </div>
           </div>
 
-          <div class="factura-box" id="factura-box">
-            <!-- Encabezado -->
-            <div class="factura-header">
-              <div class="factura-empresa">
-                <h2>🏗️ Pycasas Alquileres</h2>
-                <p>Alquiler de Materiales de Construcción</p>
-                <p>NIT: 900.502.960-5</p>
-                <p>Tel: 300 380 38 99</p>
+          <div class="factura-section">
+            <h4>👤 Datos del Cliente</h4>
+            <div class="factura-datos">
+              <div class="dato">
+                <strong>Nombre:</strong><span id="fact-cliente-nombre">-</span>
               </div>
-              <div class="factura-numero">
-                <div class="num" id="fact-numero">ALQ-0000</div>
-                <p>
-                  Fecha de Emisión: <strong id="fact-fecha-emision">-</strong>
-                </p>
-                <p>
-                  Fecha de Salida: <strong id="fact-fecha-salida">-</strong>
-                </p>
-                <p>
-                  Fecha Devolución:
-                  <strong id="fact-fecha-devolucion">-</strong>
-                </p>
-                <span class="factura-badge" id="fact-estado-badge">ACTIVO</span>
+              <div class="dato">
+                <strong>Cédula / NIT:</strong><span id="fact-cliente-id">-</span>
+              </div>
+              <div class="dato">
+                <strong>Teléfono:</strong><span id="fact-cliente-tel">-</span>
+              </div>
+              <div class="dato">
+                <strong>Dirección / Obra:</strong><span id="fact-cliente-dir">-</span>
               </div>
             </div>
+          </div>
 
-            <!-- Datos del cliente -->
-            <div class="factura-section">
-              <h4>👤 Datos del Cliente</h4>
-              <div class="factura-datos">
-                <div class="dato">
-                  <strong>Nombre:</strong
-                  ><span id="fact-cliente-nombre">-</span>
-                </div>
-                <div class="dato">
-                  <strong>Cédula / NIT:</strong
-                  ><span id="fact-cliente-id">-</span>
-                </div>
-                <div class="dato">
-                  <strong>Teléfono:</strong><span id="fact-cliente-tel">-</span>
-                </div>
-                <div class="dato">
-                  <strong>Dirección / Obra:</strong
-                  ><span id="fact-cliente-dir">-</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Artículos -->
-            <div class="factura-section">
-              <h4>📦 Materiales Alquilados</h4>
-              <table class="factura-tabla">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Código</th>
-                    <th>Descripción</th>
-                    <th class="text-center">Cant.</th>
-                    <th class="text-right">Precio/día</th>
-                    <th class="text-center">Días</th>
-                    <th class="text-right">Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody id="fact-items"></tbody>
-                <tfoot>
-                  <tr>
-                    <td colspan="6" class="text-right">Subtotal Alquiler:</td>
-                    <td class="text-right" id="fact-subtotal">$0</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            <!-- Totales -->
-            <div class="factura-totales">
-              <table>
+          <div class="factura-section">
+            <h4>📦 Materiales Alquilados</h4>
+            <table class="factura-tabla">
+              <thead>
                 <tr>
-                  <td>
-                    Valor Alquiler (<span id="fact-dias-label">0</span> días):
-                  </td>
-                  <td class="text-right" id="fact-total-alquiler">$0</td>
+                  <th>#</th>
+                  <th>Código</th>
+                  <th>Descripción</th>
+                  <th class="text-center">Cant.</th>
+                  <th class="text-right">Precio/día</th>
+                  <th class="text-center">Días</th>
+                  <th class="text-right">Subtotal</th>
                 </tr>
-                <tr id="fact-garantia-row">
-                  <td>Garantía:</td>
-                  <td class="text-right" id="fact-garantia">$0</td>
+              </thead>
+              <tbody id="fact-items"></tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="6" class="text-right">Subtotal Alquiler:</td>
+                  <td class="text-right" id="fact-subtotal">$0</td>
                 </tr>
-                <tr class="total-final">
-                  <td>TOTAL A PAGAR:</td>
-                  <td class="text-right" id="fact-total-pagar">$0</td>
-                </tr>
-              </table>
-            </div>
+              </tfoot>
+            </table>
+          </div>
 
-            <!-- Observaciones -->
-            <div
-              class="factura-section factura-obs-section"
-              id="factura-obs-section"
-            >
-              <h4>📝 Observaciones</h4>
-              <p id="fact-observaciones" class="observaciones-text">-</p>
-            </div>
+          <div class="factura-totales">
+            <table>
+              <tr>
+                <td>
+                  Valor Alquiler (<span id="fact-dias-label">0</span> días):
+                </td>
+                <td class="text-right" id="fact-total-alquiler">$0</td>
+              </tr>
+              <tr id="fact-garantia-row">
+                <td>Garantía ret.:</td>
+                <td class="text-right" id="fact-garantia">$0</td>
+              </tr>
+              <tr class="total-final">
+                <td>TOTAL A PAGAR:</td>
+                <td class="text-right" id="fact-total-pagar">$0</td>
+              </tr>
+            </table>
+          </div>
 
-            <!-- Firmas -->
-            <div class="firma-grid">
-              <div class="firma-box">
-                <p>ENTREGADO POR</p>
-                <p id="fact-registrado-por" class="firma-usuario">-</p>
-              </div>
-              <div class="firma-box">
-                <p>RECIBIDO POR (Cliente)</p>
-                <p class="firma-usuario">
-                  C.C./NIT: <span id="fact-firma-id">-</span>
-                </p>
-              </div>
-            </div>
+          <div class="factura-section factura-obs-section" id="factura-obs-section">
+            <h4>📝 Observaciones</h4>
+            <p id="fact-observaciones" class="observaciones-text">-</p>
+          </div>
 
-            <div class="factura-footer">
-              <p>
-                Gracias por confiar en Pycasas Alquileres. Esta factura es el
-                comprobante de salida de materiales.
-              </p>
-              <p>
-                Conserve este documento hasta la devolución completa de los
-                materiales.
+          <div class="firma-grid">
+            <div class="firma-box">
+              <p>ENTREGADO POR</p>
+              <p id="fact-registrado-por" class="firma-usuario">-</p>
+            </div>
+            <div class="firma-box">
+              <p>RECIBIDO POR (Cliente)</p>
+              <p class="firma-usuario">
+                C.C./NIT: <span id="fact-firma-id">-</span>
               </p>
             </div>
           </div>
-          <!-- /.factura-box -->
+
+          <div class="factura-footer">
+            <p>Gracias por confiar en Pycasas Alquileres.</p>
+            <p>Esta es su factura formal de cobro de alquiler.</p>
+          </div>
         </div>
         <!-- /#factura-contenido -->
       </main>

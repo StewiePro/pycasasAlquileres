@@ -42,11 +42,11 @@ function obtenerClaveStorage(base) {
 // -----------------------------------------------
 
 /**
- * Obtiene la sesión activa desde sessionStorage.
+ * Obtiene la sesión activa desde localStorage.
  * Retorna null si no hay sesión.
  */
 function obtenerSesion() {
-  return JSON.parse(sessionStorage.getItem("usuario") || "null");
+  return JSON.parse(localStorage.getItem("usuario") || "null");
 }
 
 /**
@@ -77,10 +77,10 @@ function verificarSesion() {
 }
 
 /**
- * Cierra la sesión actual eliminando sessionStorage y redirige al login.
+ * Cierra la sesión actual eliminando localStorage y redirige al login.
  */
 function cerrarSesion() {
-  sessionStorage.removeItem("usuario");
+  localStorage.removeItem("usuario");
   window.location.href = "login.html";
 }
 
@@ -120,7 +120,7 @@ async function handleLogin(event) {
   );
 
   if (usuarioLocal) {
-    sessionStorage.setItem(
+    localStorage.setItem(
       "usuario",
       JSON.stringify({
         username: usuarioLocal.username,
@@ -154,7 +154,7 @@ async function handleLogin(event) {
       return;
     }
 
-    sessionStorage.setItem(
+    localStorage.setItem(
       "usuario",
       JSON.stringify({
         username: data.usuario.username,
@@ -1339,10 +1339,8 @@ function cargarAlquileresActivos() {
   if (!div) return;
   const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
   const activos = alquileres
-    .filter((a) => a.estado === "activo")
     .slice()
-    .reverse()
-    .slice(0, 10);
+    .reverse();
 
   if (activos.length === 0) {
     div.innerHTML = '<p class="text-muted">No hay alquileres activos.</p>';
@@ -1350,6 +1348,9 @@ function cargarAlquileresActivos() {
   }
 
   div.innerHTML = `
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+      <button class="btn btn-success" onclick="descargarHistorialCSV()">📥 Descargar Historial CSV</button>
+    </div>
     <table class="tabla">
       <thead><tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Artículos</th><th>Fecha Salida</th><th>Total</th><th>Estado</th><th>Remisión</th><th>Factura</th></tr></thead>
       <tbody>
@@ -1363,14 +1364,89 @@ function cargarAlquileresActivos() {
             <td>${a.items.map((i) => `${i.nombre} (${i.cantidad})`).join(", ")}</td>
             <td>${a.fechaSalida}</td>
             <td>$${(a.totalPagar || 0).toLocaleString("es-CO")}</td>
-            <td><span class="badge badge-warning">Activo</span></td>
-            <td><a href="remision_salida.html?id=${a.id}" class="btn btn-sm btn-outline" >📄 Remisión</a></td>
-            <td><a href="factura_alquiler.html?id=${a.id}" class="btn btn-sm btn-primary" >🧾 Factura</a></td>
+            <td><span class="badge ${a.estado === 'devuelto' ? 'badge-success' : 'badge-warning'}">${a.estado === 'devuelto' ? 'Devuelto' : 'Activo'}</span></td>
+            <td><a href="remision_salida.html?id=${a.id}" class="btn btn-sm btn-outline" target="_blank">📄 Remisión</a></td>
+            <td><a href="factura_alquiler.html?id=${a.id}" class="btn btn-sm btn-primary" target="_blank">🧾 Factura</a></td>
           </tr>`,
           )
           .join("")}
       </tbody>
     </table>`;
+}
+
+/**
+ * Genera y descarga el historial completo de alquileres y devoluciones en formato CSV
+ */
+function descargarHistorialCSV() {
+  const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
+  if (alquileres.length === 0) {
+    alert("No hay alquileres en el historial para exportar.");
+    return;
+  }
+
+  // Definir cabeceras del CSV
+  const cabeceras = [
+    "ID Alquiler",
+    "Estado",
+    "Cliente",
+    "Cedula/NIT",
+    "Telefono",
+    "Direccion",
+    "Articulos",
+    "Fecha Salida",
+    "Fecha Devolucion",
+    "Dias Liquidados",
+    "Subtotal Diario",
+    "Garantia Base",
+    "Garantia Cobrada",
+    "Total Pagado",
+    "Registrado Por",
+    "Observaciones"
+  ];
+
+  // Construir filas
+  const filas = alquileres.map(a => {
+    const articulos = a.items.map(i => `${i.nombre} (x${i.cantidad})`).join(" | ");
+    const fechaDev = a.fechaDevolucionReal || "-";
+    const dias = a.dias || 0;
+    
+    const escapillas = (str) => {
+      if (str == null) return '""';
+      const text = String(str).replace(/"/g, '""');
+      return `"${text}"`;
+    };
+
+    return [
+      a.id,
+      a.estado.toUpperCase(),
+      escapillas(a.cliente.nombre),
+      escapillas(a.cliente.identificacion),
+      escapillas(a.cliente.telefono),
+      escapillas(a.cliente.direccion),
+      escapillas(articulos),
+      escapillas(a.fechaSalida),
+      escapillas(fechaDev),
+      dias,
+      a.subtotalDia || 0,
+      a.garantia || 0,
+      a.garantiaCobrada === true ? (a.garantia || 0) : 0,
+      a.totalPagar || 0,
+      escapillas(a.registradoPor),
+      escapillas(a.observaciones)
+    ].join(",");
+  });
+
+  const csvContent = [cabeceras.join(","), ...filas].join("\n");
+  const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+  
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", `Historial_Alquileres_PYME_${new Date().toISOString().slice(0,10)}.csv`);
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 // -----------------------------------------------
@@ -1599,9 +1675,11 @@ function confirmarDevolucion() {
   });
   localStorage.setItem(obtenerClaveStorage("productos"), JSON.stringify(productos));
 
+  const idAlquilerDevuelto = _alquilerSeleccionado.id;
+
   mostrarAlerta(
     msgDiv,
-    `Devolución del alquiler #${_alquilerSeleccionado.id} registrada correctamente.`,
+    `Devolución del alquiler #${idAlquilerDevuelto} registrada correctamente.`,
     "success",
   );
 
@@ -1612,19 +1690,20 @@ function confirmarDevolucion() {
   document.getElementById("tabla-busqueda-alquiler").innerHTML = "";
   cargarHistorialDevoluciones();
   window.scrollTo(0, 0);
+
+  // Abrir la factura automáticamente para su cobro o impresión
+  window.open(`factura_alquiler.html?id=${idAlquilerDevuelto}`, "_blank");
 }
 
 /**
  * Carga el historial de devoluciones completadas.
  */
-async function cargarHistorialDevoluciones() {
+function cargarHistorialDevoluciones() {
   const div = document.getElementById("tabla-historial-devoluciones");
   if (!div) return;
 
   try {
-    const isTest = obtenerSesion()?.isTest || false;
-    const res = await fetch(API_BASE + "/api/alquileres?test=" + isTest);
-    const alquileres = await res.json();
+    const alquileres = JSON.parse(localStorage.getItem(obtenerClaveStorage("alquileres")) || "[]");
 
     const devueltos = alquileres
       .filter((a) => a.estado === "devuelto")
@@ -1638,22 +1717,25 @@ async function cargarHistorialDevoluciones() {
       return;
     }
 
-    let html = "<table class='table'>";
+    let html = "<table class='tabla'>";
     html +=
-      "<tr><th>ID</th><th>Cliente</th><th>Artículos</th><th>Salida</th><th>Dev. Real</th><th>Total</th></tr>";
+      "<thead><tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Artículos</th><th>Fecha Salida</th><th>Total</th><th>Estado</th><th>Remisión</th><th>Factura</th></tr></thead><tbody>";
 
     devueltos.forEach((a) => {
       html += `<tr>
-        <td>${a.id}</td>
+        <td><code>${a.id}</code></td>
         <td>${a.cliente?.nombre || ""}</td>
+        <td>${a.cliente?.identificacion || ""}</td>
         <td>${a.items.map((i) => `${i.nombre} (${i.cantidad})`).join(", ")}</td>
         <td>${a.fechaSalida}</td>
-        <td>${a.fechaDevolucionReal}</td>
-        <td>${a.totalPagar}</td>
+        <td>$${(a.totalPagar || 0).toLocaleString("es-CO")}</td>
+        <td><span class="badge badge-success">Devuelto</span></td>
+        <td><a href="remision_salida.html?id=${a.id}" class="btn btn-sm btn-outline" target="_blank">📄 Remisión</a></td>
+        <td><a href="factura_alquiler.html?id=${a.id}" class="btn btn-sm btn-primary" target="_blank">🧾 Factura</a></td>
       </tr>`;
     });
 
-    html += "</table>";
+    html += "</tbody></table>";
     div.innerHTML = html;
   } catch (err) {
     console.error("❌ Error cargando historial:", err);
@@ -1708,7 +1790,7 @@ async function cargarProductos() {
 function initFacturaAlquiler() {
   const sesion = verificarSesion();
   if (!sesion) return;
-  generarSidebar(sesion, "");
+  generarSidebar(sesion, "factura_alquiler.html");
 
   const params = new URLSearchParams(window.location.search);
   const id = parseInt(params.get("id"));
@@ -1833,7 +1915,7 @@ function initFacturaAlquiler() {
 function initRemisionSalida() {
   const sesion = verificarSesion();
   if (!sesion) return;
-  generarSidebar(sesion, "");
+  generarSidebar(sesion, "remision_salida.html");
 
   const params = new URLSearchParams(window.location.search);
   const id = parseInt(params.get("id"));
@@ -1992,11 +2074,14 @@ function generarSidebar(sesion, paginaActual) {
     },
     { label: "👥 Registrar Usuario", href: "registro.html", soloRol: "admin" },
     { label: "⚙️ Gestionar Usuarios", href: "admin_usuarios.html", soloRol: "admin" },
+    // Vistas adicionales que requieren estar autenticados pero no van en el menú principal
+    { label: "Factura", href: "factura_alquiler.html", permiso: "facturacion", hidden: true },
+    { label: "Remision", href: "remision_salida.html", permiso: "facturacion", hidden: true }
   ];
 
   const ul = document.createElement("ul");
   menuItems.forEach((item) => {
-    if (!tieneAcceso(item, sesion)) return;
+    if (item.hidden || !tieneAcceso(item, sesion)) return;
     const li = document.createElement("li");
     li.textContent = item.label;
     if (item.href === paginaActual) li.classList.add("active");

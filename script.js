@@ -1,5 +1,5 @@
 ﻿/* =============================================
-   SCRIPT.JS - Gestión PYME
+   SCRIPT.JS - Pycasas-Módulo de alquileres
    Todas las funciones organizadas por página
    ============================================= */
 
